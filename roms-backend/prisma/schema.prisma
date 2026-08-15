@@ -1,0 +1,522 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. ENUMS SYSTEM
+// ==========================================
+enum RoleName {
+  ADMIN
+  MANAGER
+  CASHIER
+  CHEF
+  WAITER
+  CUSTOMER
+}
+
+enum TableStatus {
+  AVAILABLE // Xanh lá - Bàn trống
+  RESERVED  // Vàng - Đã đặt cọc/khóa trước
+  OCCUPIED  // Đỏ - Đang có khách ăn
+  CLEANING  // Xám - Đang dọn bàn
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum DepositStatus {
+  PENDING
+  PAID
+  REFUNDED
+}
+
+enum SessionStatus {
+  OPEN      // Đang ăn
+  PAYING    // Đang tính tiền
+  CLOSED    // Đã thanh toán xong
+  CANCELLED
+}
+
+enum OrderStatus {
+  CREATED
+  CONFIRMED
+  IN_PROGRESS
+  SERVED
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderItemStatus {
+  PENDING   // Chờ Bếp nhận
+  COOKING   // Bếp đang nấu (Tự động trừ kho)
+  READY     // Nấu xong
+  SERVED    // Phục vụ đã bưng ra
+  REJECTED  // Bếp từ chối (Hết hàng)
+}
+
+enum StockMovementType {
+  IN_RECEIPT    // Nhập hàng (+)
+  OUT_COOKING   // Xuất nấu (-)
+  WASTE_SPOILED // Hủy thiu hỏng (-)
+  ADJUSTMENT    // Điều chỉnh kiểm kê (+/-)
+}
+
+enum BillStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  VOIDED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  VNPAY
+  MOMO
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum AttendanceStatus {
+  ON_TIME
+  LATE
+  ABSENT
+}
+
+// ==========================================
+// MODULE 1: AUTH & RBAC DOMAIN
+// ==========================================
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        RoleName @unique
+  description String?
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  description String?
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  phone        String   @unique
+  email        String?  @unique
+  passwordHash String   @map("password_hash")
+  fullName     String   @map("full_name")
+  avatarUrl    String?  @map("avatar_url")
+  roleId       String   @map("role_id") @db.Uuid
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  role                Role               @relation(fields: [roleId], references: [id])
+  refreshTokens       RefreshToken[]
+  openedSessions      DiningSession[]    @relation("OpenedBySessions")
+  closedSessions      DiningSession[]    @relation("ClosedBySessions")
+  waiterOrders        Order[]            @relation("WaiterOrders")
+  stockReceipts       StockReceipt[]
+  stockMovements      StockMovement[]
+  cashierBills        Bill[]             @relation("CashierBills")
+  cashierPayments     Payment[]          @relation("CashierPayments")
+  approvedRefunds     Refund[]           @relation("ManagerRefunds")
+  shiftAssignments    ShiftAssignment[]
+  attendances         Attendance[]
+  auditLogs           AuditLog[]
+  reservations        Reservation[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @map("token_hash")
+  deviceInfo String?   @map("device_info")
+  ipAddress  String?   @map("ip_address")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ==========================================
+// MODULE 2: RESTAURANT SETUP DOMAIN
+// ==========================================
+model Table {
+  id                 String      @id @default(uuid()) @db.Uuid
+  tableNumber        String      @unique @map("table_number")
+  floor              Int         @default(1)
+  capacity           Int         @default(4)
+  status             TableStatus @default(AVAILABLE)
+  qrCodeToken        String      @unique @map("qr_code_token")
+
+  // KHÓA NGOẠI TỰ THAM CHIẾU (Self-Referencing FK cho gộp bàn)
+  mergedIntoTableId String?     @map("merged_into_table_id") @db.Uuid
+  mergedIntoTable   Table?      @relation("TableMerging", fields: [mergedIntoTableId], references: [id], onDelete: SetNull)
+  linkedTables      Table[]     @relation("TableMerging")
+
+  diningSessions    DiningSession[]
+  reservations      Reservation[]
+
+  @@map("tables")
+}
+
+model Category {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  displayOrder Int      @default(0) @map("display_order")
+  isActive     Boolean  @default(true) @map("is_active")
+
+  menuItems MenuItem[]
+
+  @@map("categories")
+}
+
+model MenuItem {
+  id               String   @id @default(uuid()) @db.Uuid
+  categoryId       String   @map("category_id") @db.Uuid
+  name             String
+  price            Decimal  @db.Decimal(12, 2)
+  costPrice        Decimal? @map("cost_price") @db.Decimal(12, 2)
+  imageUrl         String?  @map("image_url")
+  description      String?
+  isAvailable      Boolean  @default(true) @map("is_available")
+  isRecommendable Boolean  @default(false) @map("is_recommendable")
+
+  category   Category    @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+  recipes    Recipe[]
+
+  @@map("menu_items")
+}
+
+// ==========================================
+// MODULE 3: DINING SESSIONS & ORDERS
+// ==========================================
+model Reservation {
+  id              String            @id @default(uuid()) @db.Uuid
+  customerId      String?           @map("customer_id") @db.Uuid
+  guestName       String            @map("guest_name")
+  guestPhone      String            @map("guest_phone")
+  specialRequest  String?           @map("special_request")
+  tableId         String?           @map("table_id") @db.Uuid
+  partySize       Int               @map("party_size")
+  reservationTime DateTime          @map("reservation_time")
+  depositAmount   Decimal           @default(0) @map("deposit_amount") @db.Decimal(12, 2)
+  depositStatus   DepositStatus     @default(PENDING) @map("deposit_status")
+  status          ReservationStatus @default(PENDING)
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  customer       User?           @relation(fields: [customerId], references: [id])
+  table          Table?          @relation(fields: [tableId], references: [id])
+  diningSessions DiningSession[]
+
+  @@map("reservations")
+}
+
+model DiningSession {
+  id            String        @id @default(uuid()) @db.Uuid
+  sessionCode   String        @unique @map("session_code")
+  tableId       String        @map("table_id") @db.Uuid
+  reservationId String?       @map("reservation_id") @db.Uuid
+  openedById    String?       @map("opened_by_id") @db.Uuid
+  closedById    String?       @map("closed_by_id") @db.Uuid
+  customerCount Int           @default(1) @map("customer_count")
+  status        SessionStatus @default(OPEN)
+  startTime     DateTime      @default(now()) @map("start_time")
+  endTime       DateTime?     @map("end_time")
+
+  table       Table        @relation(fields: [tableId], references: [id])
+  reservation Reservation? @relation(fields: [reservationId], references: [id])
+  openedBy    User?        @relation("OpenedBySessions", fields: [openedById], references: [id])
+  closedBy    User?        @relation("ClosedBySessions", fields: [closedById], references: [id])
+
+  orders Order[]
+  bills  Bill[]
+
+  @@map("dining_sessions")
+}
+
+model Order {
+  id          String      @id @default(uuid()) @db.Uuid
+  orderCode   String      @unique @map("order_code")
+  sessionId   String      @map("session_id") @db.Uuid
+  waiterId    String?     @map("waiter_id") @db.Uuid
+  status      OrderStatus @default(CREATED)
+  totalAmount Decimal     @default(0) @map("total_amount") @db.Decimal(12, 2)
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  session DiningSession @relation(fields: [sessionId], references: [id])
+  waiter  User?         @relation("WaiterOrders", fields: [waiterId], references: [id])
+
+  orderItems OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id              String          @id @default(uuid()) @db.Uuid
+  orderId         String          @map("order_id") @db.Uuid
+  menuItemId      String          @map("menu_item_id") @db.Uuid
+  quantity        Int             @default(1)
+  unitPrice       Decimal         @map("unit_price") @db.Decimal(12, 2)
+  costPrice       Decimal?        @map("cost_price") @db.Decimal(12, 2)
+  notes           String?
+  itemStatus      OrderItemStatus @default(PENDING) @map("item_status")
+  rejectionReason String?         @map("rejection_reason")
+
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem       MenuItem        @relation(fields: [menuItemId], references: [id])
+  stockMovements StockMovement[]
+
+  @@map("order_items")
+}
+
+// ==========================================
+// MODULE 4: INVENTORY & BOM DOMAIN
+// ==========================================
+model InventoryItem {
+  id                 String  @id @default(uuid()) @db.Uuid
+  itemName           String  @map("item_name")
+  unit               String  // "kg", "gram", "lon", "chai"...
+  currentStock       Decimal @default(0) @map("current_stock") @db.Decimal(12, 3)
+  minAlertThreshold Decimal @default(0) @map("min_alert_threshold") @db.Decimal(12, 3)
+
+  recipes             Recipe[]
+  stockReceiptDetails StockReceiptDetail[]
+  stockMovements      StockMovement[]
+
+  @@map("inventory_items")
+}
+
+model Recipe {
+  id               String  @id @default(uuid()) @db.Uuid
+  menuItemId       String  @map("menu_item_id") @db.Uuid
+  inventoryItemId  String  @map("inventory_item_id") @db.Uuid
+  quantityRequired Decimal @map("quantity_required") @db.Decimal(12, 3)
+
+  menuItem      MenuItem      @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@unique([menuItemId, inventoryItemId])
+  @@map("recipes")
+}
+
+model StockReceipt {
+  id           String   @id @default(uuid()) @db.Uuid
+  receiptCode  String   @unique @map("receipt_code")
+  managerId    String   @map("manager_id") @db.Uuid
+  supplierName String?  @map("supplier_name")
+  totalCost    Decimal  @default(0) @map("total_cost") @db.Decimal(12, 2)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  manager User                 @relation(fields: [managerId], references: [id])
+  details StockReceiptDetail[]
+
+  @@map("stock_receipts")
+}
+
+model StockReceiptDetail {
+  id              String  @id @default(uuid()) @db.Uuid
+  stockReceiptId  String  @map("stock_receipt_id") @db.Uuid
+  inventoryItemId String  @map("inventory_item_id") @db.Uuid
+  quantity        Decimal @db.Decimal(12, 3)
+  unitPrice       Decimal @map("unit_price") @db.Decimal(12, 2)
+
+  stockReceipt  StockReceipt  @relation(fields: [stockReceiptId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@map("stock_receipt_details")
+}
+
+model StockMovement {
+  id              String            @id @default(uuid()) @db.Uuid
+  inventoryItemId String            @map("inventory_item_id") @db.Uuid
+  createdById     String?           @map("created_by_id") @db.Uuid
+  orderItemId     String?           @map("order_item_id") @db.Uuid
+  movementType    StockMovementType @map("movement_type")
+  quantity        Decimal           @db.Decimal(12, 3)
+  balanceAfter    Decimal           @map("balance_after") @db.Decimal(12, 3)
+  note            String?
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  createdBy     User?          @relation(fields: [createdById], references: [id])
+  orderItem     OrderItem?     @relation(fields: [orderItemId], references: [id])
+
+  @@map("stock_movements")
+}
+
+// ==========================================
+// MODULE 5: BILLING & PROMOTIONS
+// ==========================================
+model Promotion {
+  id              String    @id @default(uuid()) @db.Uuid
+  code            String    @unique
+  description     String?
+  discountPercent Float?    @map("discount_percent")
+  discountAmount  Decimal?  @map("discount_amount") @db.Decimal(12, 2)
+  maxDiscount     Decimal?  @map("max_discount") @db.Decimal(12, 2)
+  minOrderAmount  Decimal?  @map("min_order_amount") @db.Decimal(12, 2)
+  startDate       DateTime  @map("start_date")
+  endDate         DateTime  @map("end_date")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  bills Bill[]
+
+  @@map("promotions")
+}
+
+model Bill {
+  id             String     @id @default(uuid()) @db.Uuid
+  billCode       String     @unique @map("bill_code")
+  sessionId      String     @map("session_id") @db.Uuid
+  cashierId      String     @map("cashier_id") @db.Uuid
+  promotionId    String?    @map("promotion_id") @db.Uuid
+  subtotalAmount Decimal    @map("subtotal_amount") @db.Decimal(12, 2)
+  discountAmount Decimal    @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  finalAmount    Decimal    @map("final_amount") @db.Decimal(12, 2)
+  status         BillStatus @default(UNPAID)
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  session   DiningSession @relation(fields: [sessionId], references: [id])
+  cashier   User          @relation("CashierBills", fields: [cashierId], references: [id])
+  promotion Promotion?    @relation(fields: [promotionId], references: [id])
+  payments  Payment[]
+
+  @@map("bills")
+}
+
+model Payment {
+  id              String        @id @default(uuid()) @db.Uuid
+  billId          String        @map("bill_id") @db.Uuid
+  cashierId       String        @map("cashier_id") @db.Uuid
+  paymentMethod   PaymentMethod @map("payment_method")
+  amountPaid      Decimal       @map("amount_paid") @db.Decimal(12, 2)
+  changeAmount    Decimal       @default(0) @map("change_amount") @db.Decimal(12, 2)
+  transactionCode String?       @map("transaction_code")
+  status          PaymentStatus @default(PENDING)
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  bill    Bill     @relation(fields: [billId], references: [id])
+  cashier User     @relation("CashierPayments", fields: [cashierId], references: [id])
+  refunds Refund[]
+
+  @@map("payments")
+}
+
+model Refund {
+  id        String   @id @default(uuid()) @db.Uuid
+  paymentId String   @map("payment_id") @db.Uuid
+  managerId String   @map("manager_id") @db.Uuid
+  amount    Decimal  @db.Decimal(12, 2)
+  reason    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+  manager User    @relation("ManagerRefunds", fields: [managerId], references: [id])
+
+  @@map("refunds")
+}
+
+// ==========================================
+// MODULE 6: HR, SCHEDULING & AUDIT LOGS
+// ==========================================
+model Shift {
+  id        String @id @default(uuid()) @db.Uuid
+  name      String
+  startTime String @map("start_time") // "08:00"
+  endTime   String @map("end_time")   // "16:00"
+
+  shiftAssignments ShiftAssignment[]
+
+  @@map("shifts")
+}
+
+model ShiftAssignment {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  shiftId      String   @map("shift_id") @db.Uuid
+  assignedDate DateTime @map("assigned_date") @db.Date
+
+  user  User  @relation(fields: [userId], references: [id])
+  shift Shift @relation(fields: [shiftId], references: [id])
+
+  attendances Attendance[]
+
+  @@unique([userId, shiftId, assignedDate])
+  @@map("shift_assignments")
+}
+
+model Attendance {
+  id                String           @id @default(uuid()) @db.Uuid
+  userId            String           @map("user_id") @db.Uuid
+  shiftAssignmentId String           @map("shift_assignment_id") @db.Uuid
+  checkInTime       DateTime?        @map("check_in_time")
+  checkOutTime      DateTime?        @map("check_out_time")
+  gpsLatitude       Float?           @map("gps_latitude")
+  gpsLongitude      Float?           @map("gps_longitude")
+  status            AttendanceStatus @default(ON_TIME)
+
+  user            User            @relation(fields: [userId], references: [id])
+  shiftAssignment ShiftAssignment @relation(fields: [shiftAssignmentId], references: [id])
+
+  @@map("attendances")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   // e.g., "UPDATE_MENU_PRICE", "REFUND_PAYMENT"
+  entityName String   @map("entity_name")
+  entityId   String?  @map("entity_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
