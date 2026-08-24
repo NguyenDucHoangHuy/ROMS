@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import { CashierLocaleProvider } from '@/contexts/CashierLocaleContext'
 
 /**
  * Layout full-screen cho quầy thu ngân POS.
@@ -6,8 +7,10 @@ import { Outlet } from 'react-router-dom'
  */
 export default function CashierLayout() {
   return (
-    <div className="h-screen w-screen bg-slate-900 text-white overflow-hidden">
-      <Outlet />
-    </div>
+    <CashierLocaleProvider>
+      <div className="h-screen w-screen bg-slate-900 text-white overflow-hidden">
+        <Outlet />
+      </div>
+    </CashierLocaleProvider>
   )
 }
