@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CashierSidebar from "@/components/cashier/CashierSidebar";
 import {
   AlertCircle,
@@ -331,6 +332,8 @@ const currency = (value: number) =>
 ========================================================= */
 
 const PosTableStatusPage: React.FC = () => {
+  const navigate = useNavigate();
+
   const [tables, setTables] = useState<Table[]>(INITIAL_TABLES);
   const [selectedFloor, setSelectedFloor] = useState<FloorId>("floor-1");
   const [activeFilter, setActiveFilter] = useState<TableStatus | "all">(
@@ -661,17 +664,18 @@ const PosTableStatusPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              <HeaderIconButton>
+              <HeaderIconButton onClick={() => window.alert("You have no new notifications.")}>
                 <Bell size={18} />
                 <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
               </HeaderIconButton>
 
-              <HeaderIconButton>
+              <HeaderIconButton onClick={() => window.location.reload()}>
                 <RefreshCw size={17} />
               </HeaderIconButton>
 
               <button
                 type="button"
+                onClick={() => navigate("/cashier/settings")}
                 className="ml-1 flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-white"
               >
                 <User size={18} />
@@ -923,10 +927,12 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
 
 const HeaderIconButton: React.FC<{
   children: React.ReactNode;
-}> = ({ children }) => {
+  onClick?: () => void;
+}> = ({ children, onClick }) => {
   return (
     <button
       type="button"
+      onClick={onClick}
       className="relative flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
     >
       {children}

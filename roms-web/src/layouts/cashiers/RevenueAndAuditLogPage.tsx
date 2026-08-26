@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CashierSidebar from "@/components/cashier/CashierSidebar";
 import {
   Bell,
@@ -314,6 +315,8 @@ const generateCsv = (rows: TransactionRecord[]) => {
 };
 
 const RevenueAndAuditLogPage: React.FC = () => {
+  const navigate = useNavigate();
+
   const [timeRange, setTimeRange] = useState<TimeRange>("Month");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -678,6 +681,7 @@ const RevenueAndAuditLogPage: React.FC = () => {
                 type="button"
                 className="ml-1 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-slate-200 shadow-sm"
                 title="User profile"
+                onClick={() => navigate("/cashier/settings")}
               >
                 <span className="text-xs font-black text-slate-600">
                   TL

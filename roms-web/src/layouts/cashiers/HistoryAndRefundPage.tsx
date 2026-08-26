@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import CashierSidebar from "@/components/cashier/CashierSidebar";
 import {
   Bell,
@@ -142,6 +142,61 @@ const REFUND_REASONS: {
     description: "Enter a detailed explanation",
   },
 ];
+
+const escapeHtml = (value: string) =>
+  value.replace(
+    /[&<>'"]/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;",
+      })[character] ?? character
+  );
+
+const createPrintableReceipt = (order: OrderTransaction) => {
+  const subtotal = order.items.reduce(
+    (sum, item) => sum + item.unitPrice * item.quantity,
+    0
+  );
+  const tax = subtotal * TAX_RATE;
+  const total = subtotal + tax;
+  const items = order.items
+    .map(
+      (item) => `
+        <tr>
+          <td>${escapeHtml(item.name)}<br /><small>x${item.quantity}</small></td>
+          <td>${formatCurrency(item.unitPrice * item.quantity)}</td>
+        </tr>`
+    )
+    .join("");
+
+  return `<!doctype html>
+    <html><head><title>Receipt ${escapeHtml(order.id)}</title>
+    <style>
+      body { font-family: Arial, sans-serif; color: #111827; margin: 32px auto; max-width: 420px; }
+      h1 { font-size: 22px; margin: 0 0 6px; }
+      p { color: #4b5563; margin: 4px 0; }
+      table { border-collapse: collapse; margin: 24px 0; width: 100%; }
+      td { border-bottom: 1px solid #e5e7eb; padding: 10px 0; vertical-align: top; }
+      td:last-child { text-align: right; white-space: nowrap; }
+      small { color: #6b7280; }
+      .total { font-size: 18px; font-weight: 700; }
+      .summary { display: flex; justify-content: space-between; margin: 8px 0; }
+      @media print { body { margin: 0; } }
+    </style></head><body>
+      <h1>ROMS Restaurant</h1>
+      <p>Receipt ${escapeHtml(order.id)}</p>
+      <p>${escapeHtml(order.date)} ${escapeHtml(order.time)} | ${escapeHtml(order.table)}</p>
+      <table><tbody>${items}</tbody></table>
+      <div class="summary"><span>Subtotal</span><span>${formatCurrency(subtotal)}</span></div>
+      <div class="summary"><span>Tax (10%)</span><span>${formatCurrency(tax)}</span></div>
+      <div class="summary total"><span>Total</span><span>${formatCurrency(total)}</span></div>
+      <p>Payment: ${escapeHtml(PAYMENT_LABEL[order.paymentMethod])}</p>
+    </body></html>`;
+};
 
 /* =========================================================
  * Mock Data
@@ -361,6 +416,8 @@ function TopHeader({
   search: string;
   setSearch: React.Dispatch<React.SetStateAction<string>>;
 }) {
+  const navigate = useNavigate();
+
   return (
     <header className="flex h-[76px] shrink-0 items-center border-b border-slate-200 bg-white px-6">
       <div className="flex items-center gap-7">
@@ -388,6 +445,7 @@ function TopHeader({
           type="button"
           className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
           title="Refresh"
+          onClick={() => window.location.reload()}
         >
           <RefreshCcw size={19} />
         </button>
@@ -396,6 +454,7 @@ function TopHeader({
           type="button"
           className="relative flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
           title="Notifications"
+          onClick={() => window.alert("You have no new notifications.")}
         >
           <Bell size={19} />
 
@@ -406,6 +465,7 @@ function TopHeader({
           type="button"
           className="ml-2 flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-slate-500"
           title="User profile"
+          onClick={() => navigate("/cashier/settings")}
         >
           <UserCircle size={25} />
         </button>
@@ -608,9 +668,13 @@ function HistoryTable({
 function ReceiptDetail({
   order,
   onRefund,
+  onPrint,
+  isPrinting,
 }: {
   order: OrderTransaction;
   onRefund: () => void;
+  onPrint: () => void;
+  isPrinting: boolean;
 }) {
   const subtotal = order.items.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
@@ -742,10 +806,12 @@ function ReceiptDetail({
       <div className="shrink-0 border-t border-slate-200 bg-slate-50 p-4">
         <button
           type="button"
+          onClick={onPrint}
+          disabled={isPrinting}
           className="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-extrabold text-slate-700 transition hover:bg-slate-100"
         >
           <Printer size={18} />
-          Print Receipt
+          {isPrinting ? "Preparing Receipt..." : "Print Receipt"}
         </button>
 
         <button
@@ -1271,6 +1337,8 @@ export default function PosHistoryAndRefundPage() {
 
   const [toast, setToast] = useState<string | null>(null);
 
+  const [isPrinting, setIsPrinting] = useState(false);
+
   const selectedOrder = useMemo(
     () =>
       orders.find((order) => order.id === selectedId) ??
@@ -1341,6 +1409,39 @@ export default function PosHistoryAndRefundPage() {
     order: OrderTransaction
   ) => {
     setSelectedId(order.id);
+  };
+
+  /* =========================================================
+   * Print Receipt
+   * ======================================================= */
+
+  const handlePrintReceipt = async () => {
+    if (!selectedOrder || isPrinting) return;
+
+    const printWindow = window.open("", "_blank");
+
+    if (!printWindow) {
+      setToast("Please allow pop-ups to print the receipt.");
+      return;
+    }
+
+    setIsPrinting(true);
+
+    try {
+      printWindow.document.open();
+      printWindow.document.write(
+        createPrintableReceipt(selectedOrder)
+      );
+      printWindow.document.close();
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+    } catch {
+      printWindow.close();
+      setToast("Unable to prepare the receipt for printing.");
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   /* =========================================================
@@ -1416,6 +1517,8 @@ export default function PosHistoryAndRefundPage() {
                 <ReceiptDetail
                   order={selectedOrder}
                   onRefund={handleRefund}
+                  onPrint={handlePrintReceipt}
+                  isPrinting={isPrinting}
                 />
               )}
             </div>

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CashierSidebar from "@/components/cashier/CashierSidebar";
 import {
   AlertTriangle,
@@ -302,6 +303,7 @@ const ProgressBar: React.FC<{
  * ========================================================= */
 
 const EndOfDayReportPage: React.FC = () => {
+    const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState("2023-10-24");
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -588,6 +590,7 @@ const EndOfDayReportPage: React.FC = () => {
 
               <button
                 type="button"
+                onClick={() => navigate("/cashier/settings")}
                 className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-slate-600 ring-2 ring-white"
                 title="User profile"
               >
@@ -868,6 +871,13 @@ const EndOfDayReportPage: React.FC = () => {
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
                         <CreditCard className="h-4 w-4" />
                       </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/cashier/settings")}
+                  title="User profile"
+                >
+                  <UserRound className="h-4 w-4" />
+                </button>
 
                       <h2 className="text-sm font-bold text-slate-800">
                         Payment Methods

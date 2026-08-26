@@ -449,6 +449,7 @@ const CashierCheckoutPage: React.FC = () => {
 
               <button
                 type="button"
+                onClick={() => window.alert("You have no new notifications.")}
                 className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
               >
                 <Bell size={20} />
@@ -481,6 +482,7 @@ const CashierCheckoutPage: React.FC = () => {
 
               <button
                 type="button"
+                onClick={() => navigate("/cashier/settings")}
                 className="ml-1 flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-[12px] font-bold text-white"
               >
                 TL

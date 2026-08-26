@@ -15,6 +15,7 @@ import {
   LogOut,
   Receipt,
   RotateCcw,
+  RefreshCw,
   Save,
   Settings,
   Settings2,
@@ -345,9 +346,10 @@ function ToggleSwitch({
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label="Notification sound"
       onClick={() => onChange(!checked)}
       className={`relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-        checked ? "bg-orange-600" : "bg-slate-300"
+        checked ? "bg-orange-500 shadow-sm shadow-orange-200" : "bg-slate-300"
       }`}
     >
       <span
@@ -992,6 +994,17 @@ export default function CashierProfileSettings() {
                 />
 
                 <span className="absolute right-[8px] top-[7px] h-2.5 w-2.5 rounded-full border-2 border-white bg-orange-600" />
+              </button>
+
+              {/* Refresh */}
+              <button
+                type="button"
+                aria-label="Refresh"
+                title="Refresh"
+                onClick={() => window.location.reload()}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+              >
+                <RefreshCw size={19} />
               </button>
 
               {/* Avatar */}

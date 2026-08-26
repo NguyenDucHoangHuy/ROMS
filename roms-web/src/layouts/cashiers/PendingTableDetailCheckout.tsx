@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CashierSidebar from "@/components/cashier/CashierSidebar";
 import {
   ArrowLeft,
@@ -320,12 +321,20 @@ const SidebarItem = ({
  * ======================================================= */
 
 const CashierCheckoutDashboard: React.FC = () => {
+    const navigate = useNavigate();
+
   const [selectedOrderId, setSelectedOrderId] = useState("28485");
   const [coupon, setCoupon] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(false);
   const [activeNav, setActiveNav] = useState("Sales");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    window.setTimeout(() => setIsRefreshing(false), 700);
+  };
 
   const selectedPendingOrder = useMemo(() => {
     return (
@@ -506,13 +515,18 @@ const CashierCheckoutDashboard: React.FC = () => {
 
               <button
                 type="button"
+                onClick={handleRefresh}
                 className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
               >
-                <RefreshCw size={19} />
+                <RefreshCw
+                  size={19}
+                  className={isRefreshing ? "animate-spin" : ""}
+                />
               </button>
 
               <button
                 type="button"
+                onClick={() => navigate("/cashier/settings")}
                 className="ml-1 flex items-center gap-2.5 rounded-xl p-1.5 pr-2.5 transition hover:bg-slate-100"
               >
                 <div className="relative">
