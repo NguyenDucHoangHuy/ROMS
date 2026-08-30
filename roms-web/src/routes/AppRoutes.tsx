@@ -5,17 +5,17 @@ import ProtectedRoute from './ProtectedRoute'
 
 // Layouts
 import AdminLayout from '@/layouts/AdminLayout'
-import KitchenLayout from '@/layouts/KitchenLayout'
+// import KitchenLayout from '@/layouts/KitchenLayout'
 import CashierLayout from '@/layouts/CashierLayout'
 import ClientLayout from '@/layouts/ClientLayout'
 
 // Feature pages — lazy import trong tương lai khi cần code-splitting
-import LoginPage from '@/features/auth/LoginPage'
+// import LoginPage from '@/features/auth/LoginPage'
 import MenuPage from '@/features/client-qr/MenuPage'
 import CartPage from '@/features/client-qr/CartPage'
 import OrderStatusPage from '@/features/client-qr/OrderStatusPage'
 import ReservationPage from '@/features/client-qr/ReservationPage'
-import KitchenDashboard from '@/features/kds-kitchen/KitchenDashboard'
+//import KitchenDashboard from '@/features/kds-kitchen/KitchenDashboard'
 import POSDashboard from '@/features/cashier-pos/POSDashboard'
 import AnalyticsDashboard from '@/features/manager/analytics/AnalyticsDashboard'
 import MenuManagement from '@/features/manager/menu/MenuManagement'
@@ -24,14 +24,20 @@ import HRPage from '@/features/manager/hr/HRPage'
 import PromotionsPage from '@/features/manager/promotions/PromotionsPage'
 import AuditLogsPage from '@/features/manager/audit-logs/AuditLogsPage'
 
+import ChefDashboard from '@/features/chef/ChefDashboard'
+import ChefMenuManagement from '@/features/chef/ChefMenuManagement'
+import ChefKitchenQueue from '@/features/chef/ChefKitchenQueue'
+import ChefInventory from '@/features/chef/ChefInventory'
+import ChefAIAnalytics from '@/features/chef/ChefAIAnalytics'
+
 const MANAGER_ADMIN = [UserRole.MANAGER, UserRole.ADMIN]
 
 export default function AppRoutes() {
   return (
     <Routes>
       {/* ── Public ── */}
-      <Route path={ROUTES.LOGIN} element={<LoginPage />} />
-
+      {/* <Route path={ROUTES.LOGIN} element={<LoginPage />} /> */}
+          <Route path="/" element={<Navigate to="/kitchen" replace />} />
       {/* ── Customer QR (public, no auth needed) ── */}
       <Route element={<ClientLayout />}>
         <Route path="/table/:tableId/menu" element={<MenuPage />} />
@@ -40,17 +46,12 @@ export default function AppRoutes() {
         <Route path="/reservation" element={<ReservationPage />} />
       </Route>
 
-      {/* ── Kitchen (Chef only) ── */}
-      <Route
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.CHEF, ...MANAGER_ADMIN]}>
-            <KitchenLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/kitchen" element={<KitchenDashboard />} />
-      </Route>
-
+      {/* ── Kitchen / Chef (Đã gỡ bọc Layout & ProtectedRoute để dev UI) ── */}
+      <Route path="/kitchen" element={<ChefDashboard />} />
+      <Route path="/kitchen/queue" element={<ChefKitchenQueue />} />
+      <Route path="/kitchen/menu" element={<ChefMenuManagement />} />
+      <Route path="/kitchen/inventory" element={<ChefInventory />} />
+      <Route path="/kitchen/analytics" element={<ChefAIAnalytics />} />
       {/* ── Cashier POS ── */}
       <Route
         element={
