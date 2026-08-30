@@ -10,17 +10,40 @@ import CashierLayout from '@/layouts/CashierLayout'
 import ClientLayout from '@/layouts/ClientLayout'
 
 // Feature pages — lazy import trong tương lai khi cần code-splitting
+// Auth
 import LoginPage from '@/features/auth/LoginPage'
+
+// Customer
 import MenuPage from '@/features/client-qr/MenuPage'
 import CartPage from '@/features/client-qr/CartPage'
 import OrderStatusPage from '@/features/client-qr/OrderStatusPage'
 import ReservationPage from '@/features/client-qr/ReservationPage'
+
+// Kitchen
 import KitchenDashboard from '@/features/kds-kitchen/KitchenDashboard'
+
+// Cashier
 import POSDashboard from '@/features/cashier-pos/POSDashboard'
+
+// Manager-Admin
+// import AnalyticsDashboard from '@/features/manager/analytics/AnalyticsDashboard'
+// import MenuManagement from '@/features/manager/menu/MenuView'
+// import InventoryPage from '@/features/manager/inventory/InventoryView'
+// import HRPage from '@/features/manager/hr/HRPage'
+// import PromotionsPage from '@/features/manager/promotions/PromotionsPage'
+// import AuditLogsPage from '@/features/manager/audit-logs/AuditLogsPage'
+import OverviewView from '@/features/manager/overview/OverviewView'
 import AnalyticsDashboard from '@/features/manager/analytics/AnalyticsDashboard'
-import MenuManagement from '@/features/manager/menu/MenuManagement'
-import InventoryPage from '@/features/manager/inventory/InventoryPage'
-import HRPage from '@/features/manager/hr/HRPage'
+import FloorMapView from '@/features/manager/floor-map/FloorMapView'
+import MenuView from '@/features/manager/menu/MenuView'
+import InventoryView from '@/features/manager/inventory/InventoryView'
+import SuppliersView from '@/features/manager/suppliers/SuppliersView'
+import AttendanceView from '@/features/manager/atendance/AttendanceView'
+import LeaveView from '@/features/manager/leave-request-approval/LeaveView'
+import ScheduleView from '@/features/manager/staffs-manage/ScheduleView'
+import PeopleView from '@/features/manager/staffs-manage/PeopleView'
+import EmployeesView from '@/features/manager/hr/EmployeesView'
+import OrdersView from '@/features/manager/orders-billing/OrdersView'
 import PromotionsPage from '@/features/manager/promotions/PromotionsPage'
 import AuditLogsPage from '@/features/manager/audit-logs/AuditLogsPage'
 
@@ -63,7 +86,7 @@ export default function AppRoutes() {
       </Route>
 
       {/* ── Manager / Admin Dashboard ── */}
-      <Route
+      {/* <Route
         element={
           <ProtectedRoute allowedRoles={MANAGER_ADMIN}>
             <AdminLayout />
@@ -84,6 +107,102 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+      </Route> */}
+       <Route element={<AdminLayout />}>
+
+        {/* Manager Dashboard */}
+        <Route
+          path={ROUTES.MANAGER.ROOT}
+          element={
+            <Navigate
+              to={ROUTES.MANAGER.OVERVIEW}
+              replace
+            />
+          }
+        />
+
+        {/* ───────────── VẬN HÀNH ───────────── */}
+
+        <Route
+          path={ROUTES.MANAGER.OVERVIEW}
+          element={<OverviewView />}
+        />
+
+        <Route
+          path={ROUTES.MANAGER.FLOOR_MAP}
+          element={<FloorMapView />}
+        />
+
+        <Route
+          path={ROUTES.MANAGER.MENU}
+          element={<MenuView />}
+        />
+
+        <Route
+          path={ROUTES.MANAGER.ORDERS}
+          element={<OrdersView />}
+        />
+
+        {/* ───────────── NHÂN SỰ ───────────── */}
+
+        <Route
+          path={ROUTES.MANAGER.HR}
+          element={<PeopleView />}
+        />
+
+        <Route
+          path={ROUTES.MANAGER.EMPLOYEE_RECORDS}
+          element={<EmployeesView />}
+        />
+
+        <Route
+          path={ROUTES.MANAGER.ATTENDANCE}
+          element={<AttendanceView />}
+        />
+
+        <Route
+          path={ROUTES.MANAGER.LEAVE_REQUESTS}
+          element={<LeaveView />}
+        />
+
+        <Route
+          path={ROUTES.MANAGER.SCHEDULING}
+          element={<ScheduleView />}
+        />
+
+        {/* ───────────── KHO ───────────── */}
+
+        <Route
+          path={ROUTES.MANAGER.INVENTORY}
+          element={<InventoryView />}
+        />
+
+        <Route
+          path={ROUTES.MANAGER.SUPPLIERS}
+          element={<SuppliersView />}
+        />
+
+        {/* ───────────── KINH DOANH ───────────── */}
+
+        <Route
+          path={ROUTES.MANAGER.PROMOTIONS}
+          element={<PromotionsPage />}
+        />
+
+        {/* ───────────── AI / ANALYTICS ───────────── */}
+
+        <Route
+          path={ROUTES.MANAGER.ANALYTICS}
+          element={<AnalyticsDashboard />}
+        />
+
+        {/* ───────────── QUẢN TRỊ ───────────── */}
+
+        <Route
+          path={ROUTES.MANAGER.AUDIT_LOGS}
+          element={<AuditLogsPage />}
+        />
+
       </Route>
 
       {/* ── Fallback ── */}

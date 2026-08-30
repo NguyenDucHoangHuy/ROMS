@@ -9,7 +9,7 @@ import {
   CalendarDays,
   Tag,
   FileText,
-  Settings,
+  // Settings,
   LogOut,
   ChevronRight,
   Bell,
@@ -17,16 +17,111 @@ import {
 import { ROUTES } from '@/constants/routes'
 import { NavLink } from 'react-router-dom'
 import { useNotificationStore } from '@/stores/notificationStore'
+import {Sparkles, Store,} from "lucide-react";
+// import '../../public/css-mana-admin/globals.css'
 
+// const navItems = [
+//   { icon: LayoutDashboard, label: 'Tổng quan', to: ROUTES.MANAGER.ANALYTICS },
+//   { icon: UtensilsCrossed, label: 'Thực đơn', to: ROUTES.MANAGER.MENU },
+//   { icon: Package, label: 'Kho hàng', to: ROUTES.MANAGER.INVENTORY },
+//   { icon: Users, label: 'Nhân sự', to: ROUTES.MANAGER.HR },
+//   { icon: CalendarDays, label: 'Đặt bàn', to: ROUTES.MANAGER.TABLES },
+//   { icon: Tag, label: 'Khuyến mãi', to: ROUTES.MANAGER.PROMOTIONS },
+//   { icon: FileText, label: 'Audit Logs', to: ROUTES.MANAGER.AUDIT_LOGS },
+//   { icon: Settings, label: 'Cài đặt', to: ROUTES.MANAGER.SETTINGS },
+// ]
 const navItems = [
-  { icon: LayoutDashboard, label: 'Tổng quan', to: ROUTES.MANAGER.ANALYTICS },
-  { icon: UtensilsCrossed, label: 'Thực đơn', to: ROUTES.MANAGER.MENU },
-  { icon: Package, label: 'Kho hàng', to: ROUTES.MANAGER.INVENTORY },
-  { icon: Users, label: 'Nhân sự', to: ROUTES.MANAGER.HR },
-  { icon: CalendarDays, label: 'Đặt bàn', to: ROUTES.MANAGER.TABLES },
-  { icon: Tag, label: 'Khuyến mãi', to: ROUTES.MANAGER.PROMOTIONS },
-  { icon: FileText, label: 'Audit Logs', to: ROUTES.MANAGER.AUDIT_LOGS },
-  { icon: Settings, label: 'Cài đặt', to: ROUTES.MANAGER.SETTINGS },
+  // Vận hành
+  {
+    icon: LayoutDashboard,
+    label: 'Tổng quan',
+    to: ROUTES.MANAGER.OVERVIEW,
+  },
+  {
+    icon: CalendarDays,
+    label: 'Sơ đồ bàn',
+    to: ROUTES.MANAGER.FLOOR_MAP,
+  },
+  {
+    icon: UtensilsCrossed,
+    label: 'Quản lý thực đơn',
+    to: ROUTES.MANAGER.MENU,
+  },
+  {
+    icon: FileText,
+    label: 'Đơn hàng & Thanh toán',
+    to: ROUTES.MANAGER.ORDERS,
+  },
+
+  // Nhân sự
+  {
+    icon: Users,
+    label: 'Quản lý nhân sự',
+    to: ROUTES.MANAGER.HR,
+  },
+  {
+    icon: CalendarDays,
+    label: 'Chấm công & Check-in GPS',
+    to: ROUTES.MANAGER.ATTENDANCE,
+  },
+  {
+    icon: FileText,
+    label: 'Duyệt nghỉ phép',
+    to: ROUTES.MANAGER.LEAVE_REQUESTS,
+  },
+  {
+    icon: CalendarDays,
+    label: 'Lịch phân ca',
+    to: ROUTES.MANAGER.SCHEDULING,
+  },
+
+  // Kho
+  {
+    icon: Package,
+    label: 'Kho nguyên liệu',
+    to: ROUTES.MANAGER.INVENTORY,
+  },
+  {
+    icon: Store,
+    label: 'Nhà cung cấp',
+    to: ROUTES.MANAGER.SUPPLIERS,
+  },
+
+  // Kinh doanh
+  {
+    icon: Tag,
+    label: 'Khuyến mãi',
+    to: ROUTES.MANAGER.PROMOTIONS,
+  },
+
+  // Analytics
+  {
+    icon: Sparkles,
+    label: 'Phân tích AI',
+    to: ROUTES.MANAGER.ANALYTICS,
+  },
+
+  // Quản trị
+  // {
+  //   icon: Settings,
+  //   label: 'Cấu hình hệ thống',
+  //   to: ROUTES.MANAGER.SETTINGS,
+  // },
+  // {
+  //   icon: Users,
+  //   label: 'Quản lý người dùng',
+  //   to: ROUTES.MANAGER.USERS,
+  // },
+  {
+    icon: Users,
+    label: 'Quản lý hồ sơ nhân viên',
+    to: ROUTES.MANAGER.EMPLOYEE_RECORDS,
+  },
+  {
+    icon: FileText,
+    label: 'Nhật ký hoạt động',
+    to: ROUTES.MANAGER.AUDIT_LOGS,
+  },
 ]
 
 export default function AdminLayout() {

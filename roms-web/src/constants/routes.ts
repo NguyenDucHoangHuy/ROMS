@@ -22,17 +22,49 @@ export const ROUTES = {
   },
 
   // Manager / Admin
+  // MANAGER: {
+  //   ROOT: '/manager',
+  //   ANALYTICS: '/manager/analytics',
+  //   MENU: '/manager/menu',
+  //   INVENTORY: '/manager/inventory',
+  //   HR: '/manager/hr',
+  //   SCHEDULING: '/manager/hr/scheduling',
+  //   TABLES: '/manager/tables',
+  //   PROMOTIONS: '/manager/promotions',
+  //   LOYALTY: '/manager/loyalty',
+  //   AUDIT_LOGS: '/manager/audit-logs',
+  //   SETTINGS: '/manager/settings',
+  // },
   MANAGER: {
+    // Dashboard
     ROOT: '/manager',
-    ANALYTICS: '/manager/analytics',
+    OVERVIEW: '/manager/overview',
+
+    // Operations
+    FLOOR_MAP: '/manager/floor-map',
     MENU: '/manager/menu',
-    INVENTORY: '/manager/inventory',
+    ORDERS: '/manager/orders-billing',
+
+    // HR
     HR: '/manager/hr',
-    SCHEDULING: '/manager/hr/scheduling',
-    TABLES: '/manager/tables',
+    EMPLOYEE_RECORDS: '/manager/employee-records',
+    ATTENDANCE: '/manager/attendance',
+    LEAVE_REQUESTS: '/manager/leave-request-approval',
+    SCHEDULING: '/manager/scheduling',
+
+    // Inventory
+    INVENTORY: '/manager/inventory',
+    SUPPLIERS: '/manager/suppliers',
+
+    // Business
     PROMOTIONS: '/manager/promotions',
-    LOYALTY: '/manager/loyalty',
+
+    // Analytics
+    ANALYTICS: '/manager/analytics',
+
+    // Administration
+    // SETTINGS: '/manager/settings',
+    // USERS: '/manager/users',
     AUDIT_LOGS: '/manager/audit-logs',
-    SETTINGS: '/manager/settings',
   },
 } as const
