@@ -5,13 +5,16 @@ import ProtectedRoute from './ProtectedRoute'
 
 // Layouts
 import AdminLayout from '@/layouts/AdminLayout'
-import KitchenLayout from '@/layouts/KitchenLayout'
+// import KitchenLayout from '@/layouts/KitchenLayout'
 import CashierLayout from '@/layouts/CashierLayout'
 import ClientLayout from '@/layouts/ClientLayout'
 
 // Feature pages — lazy import trong tương lai khi cần code-splitting
-// Customer
+
+// Auth
 import LoginPage from '@/features/auth/LoginPage'
+
+// Customer QR
 import MenuPage from '@/features/client-qr/MenuPage'
 import CartPage from '@/features/client-qr/CartPage'
 import OrderStatusPage from '@/features/client-qr/OrderStatusPage'
@@ -22,7 +25,14 @@ import DepositPage from '@/features/client-qr/DepositPage'
 import ReservationDetail from '@/features/client-qr/ReservationDetail'
 import AboutUsPage from '@/features/client-qr/AboutUsPage'
 
-import KitchenDashboard from '@/features/kds-kitchen/KitchenDashboard'
+// Kitchen Display System (KDS) — Chef Portal + màn hình bếp
+import ChefDashboard from '@/features/kds-kitchen/ChefDashboard'
+import ChefMenuManagement from '@/features/kds-kitchen/ChefMenuManagement'
+import ChefKitchenQueue from '@/features/kds-kitchen/ChefKitchenQueue'
+import ChefInventory from '@/features/kds-kitchen/ChefInventory'
+import ChefAIAnalytics from '@/features/kds-kitchen/ChefAIAnalytics'
+
+// Cashier & Manager
 import POSDashboard from '@/features/cashier-pos/POSDashboard'
 import AnalyticsDashboard from '@/features/manager/analytics/AnalyticsDashboard'
 import MenuManagement from '@/features/manager/menu/MenuManagement'
@@ -36,7 +46,7 @@ const MANAGER_ADMIN = [UserRole.MANAGER, UserRole.ADMIN]
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* ── Public ── */}
+      {/* ── Public / Auth ── */}
       <Route path={ROUTES.LOGIN} element={<LoginPage />} />
 
       {/* ── Customer QR (public, no auth needed) ── */}
@@ -46,22 +56,18 @@ export default function AppRoutes() {
         <Route path="/table/:tableId/cart" element={<CartPage />} />
         <Route path="/table/:tableId/order-status" element={<OrderStatusPage />} />
         <Route path="/reservation" element={<ReservationPage />} />
+        <Route path="/reservation/:reservationId" element={<ReservationDetail />} />
         <Route path="/dish/:dishId" element={<DishDetail />} />
         <Route path="/deposit" element={<DepositPage />} />
-        <Route path="/reservation/:reservationId" element={<ReservationDetail />} />
         <Route path="/about" element={<AboutUsPage />} />
       </Route>
 
-      {/* ── Kitchen (Chef only) ── */}
-      <Route
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.CHEF, ...MANAGER_ADMIN]}>
-            <KitchenLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/kitchen" element={<KitchenDashboard />} />
-      </Route>
+      {/* ── KDS Kitchen — Chef Portal (Đã gỡ bọc ProtectedRoute để dev UI) ── */}
+      <Route path="/kitchen" element={<ChefDashboard />} />
+      <Route path="/kitchen/queue" element={<ChefKitchenQueue />} />
+      <Route path="/kitchen/menu" element={<ChefMenuManagement />} />
+      <Route path="/kitchen/inventory" element={<ChefInventory />} />
+      <Route path="/kitchen/analytics" element={<ChefAIAnalytics />} />
 
       {/* ── Cashier POS ── */}
       <Route
