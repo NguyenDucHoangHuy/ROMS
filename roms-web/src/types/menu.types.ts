@@ -11,8 +11,9 @@ export interface MenuItem {
   id: string
   name: string
   description: string | null
-  price: number         // VND
+  price: number         // $
   imageUrl: string | null
+  avgRating?:number 
   categoryId: string
   category: MenuCategory
   isAvailable: boolean
