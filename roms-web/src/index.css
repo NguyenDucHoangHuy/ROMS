@@ -79,3 +79,7 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.6);
 }
+
+ /* Font family for the entire application */
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&display=swap" rel="stylesheet');
+@import url('https://fonts.googleapis.com/css2?family=Rancho:wght@400..700&display=swap" rel="stylesheet');

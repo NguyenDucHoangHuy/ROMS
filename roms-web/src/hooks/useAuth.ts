@@ -6,7 +6,7 @@ import type { UserRole } from '@/constants/roles'
  * Tái sử dụng ở mọi nơi cần check quyền.
  */
 export function useAuth() {
-  const { user, tokens, isAuthenticated, logout } = useAuthStore()
+  const { user, tokens, isAuthenticated, login, logout } = useAuthStore()
 
   const hasRole = (role: UserRole | UserRole[]): boolean => {
     if (!user) return false
@@ -20,6 +20,7 @@ export function useAuth() {
     user,
     tokens,
     isAuthenticated,
+    login, // 2. Bổ sung login vào object return
     logout,
     hasRole,
     role: user?.role as UserRole | undefined,
