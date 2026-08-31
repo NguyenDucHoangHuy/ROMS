@@ -48,15 +48,15 @@ import ChefAIAnalytics from '@/features/kds-kitchen/ChefAIAnalytics'
 // ============================================================
 
 import POSDashboard from '@/features/cashier-pos/POSDashboard'
-import CashierCheckoutPage from '@/layouts/cashiers/CashierCheckoutPage'
-import EndOfDayReport from '@/layouts/cashiers/EndOfDayReport'
-import HistoryAndRefundPage from '@/layouts/cashiers/HistoryAndRefundPage'
-import MergeBillModal from '@/layouts/cashiers/MergeBillModal'
-import PendingTableDetailCheckout from '@/layouts/cashiers/PendingTableDetailCheckout'
-import SplitBillModal from '@/layouts/cashiers/SplitBillModal'
-import TableStatusPage from '@/layouts/cashiers/TableStatusPage'
-import RevenueAndAuditLogPage from '@/layouts/cashiers/RevenueAndAuditLogPage'
-import CashierSettingsPage from '@/layouts/cashiers/CashierProfileSettings'
+import CashierCheckoutPage from '@/features/cashier-pos/CashierCheckoutPage'
+import EndOfDayReport from '@/features/cashier-pos/EndOfDayReport'
+import HistoryAndRefundPage from '@/features/cashier-pos/HistoryAndRefundPage'
+import MergeBillModal from '@/features/cashier-pos/MergeBillModal'
+import PendingTableDetailCheckout from '@/features/cashier-pos/PendingTableDetailCheckout'
+import SplitBillModal from '@/features/cashier-pos/SplitBillModal'
+import TableStatusPage from '@/features/cashier-pos/TableStatusPage'
+import RevenueAndAuditLogPage from '@/features/cashier-pos/RevenueAndAuditLogPage'
+import CashierSettingsPage from '@/features/cashier-pos/CashierProfileSettings'
 
 // ============================================================
 // Manager / Admin
