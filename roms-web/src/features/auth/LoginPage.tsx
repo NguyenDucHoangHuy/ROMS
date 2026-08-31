@@ -57,7 +57,7 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <div className="max-w-md w-full mx-auto mx-auto mt-8 mb-auto space-y-8">
+        <div className="max-w-md w-full mx-auto mt-8 mb-auto space-y-8">
           {/* Toggle Switch */}
           <div className="flex justify-end gap-2 text-sm font-medium">
             <button

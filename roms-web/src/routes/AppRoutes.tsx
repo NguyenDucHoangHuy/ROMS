@@ -1,20 +1,28 @@
+
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { UserRole } from '@/constants/roles'
 import { ROUTES } from '@/constants/routes'
 import ProtectedRoute from './ProtectedRoute'
 
+// ============================================================
 // Layouts
+// ============================================================
+
 import AdminLayout from '@/layouts/AdminLayout'
-// import KitchenLayout from '@/layouts/KitchenLayout'
+import KitchenLayout from '@/layouts/KitchenLayout'
 import CashierLayout from '@/layouts/CashierLayout'
 import ClientLayout from '@/layouts/ClientLayout'
 
-// Feature pages — lazy import trong tương lai khi cần code-splitting
-
+// ============================================================
 // Auth
+// ============================================================
+
 import LoginPage from '@/features/auth/LoginPage'
 
-// Customer QR
+// ============================================================
+// Customer QR — public, không cần login
+// ============================================================
+
 import MenuPage from '@/features/client-qr/MenuPage'
 import CartPage from '@/features/client-qr/CartPage'
 import OrderStatusPage from '@/features/client-qr/OrderStatusPage'
@@ -25,15 +33,35 @@ import DepositPage from '@/features/client-qr/DepositPage'
 import ReservationDetail from '@/features/client-qr/ReservationDetail'
 import AboutUsPage from '@/features/client-qr/AboutUsPage'
 
-// Kitchen Display System (KDS) — Chef Portal + màn hình bếp
+// ============================================================
+// Kitchen Display System (KDS) — Chef Portal
+// ============================================================
+
 import ChefDashboard from '@/features/kds-kitchen/ChefDashboard'
 import ChefMenuManagement from '@/features/kds-kitchen/ChefMenuManagement'
 import ChefKitchenQueue from '@/features/kds-kitchen/ChefKitchenQueue'
 import ChefInventory from '@/features/kds-kitchen/ChefInventory'
 import ChefAIAnalytics from '@/features/kds-kitchen/ChefAIAnalytics'
 
-// Cashier & Manager
+// ============================================================
+// Cashier POS
+// ============================================================
+
 import POSDashboard from '@/features/cashier-pos/POSDashboard'
+import CashierCheckoutPage from '@/features/cashier-pos/CashierCheckoutPage'
+import EndOfDayReport from '@/features/cashier-pos/EndOfDayReport'
+import HistoryAndRefundPage from '@/features/cashier-pos/HistoryAndRefundPage'
+import MergeBillModal from '@/features/cashier-pos/MergeBillModal'
+import PendingTableDetailCheckout from '@/features/cashier-pos/PendingTableDetailCheckout'
+import SplitBillModal from '@/features/cashier-pos/SplitBillModal'
+import TableStatusPage from '@/features/cashier-pos/TableStatusPage'
+import RevenueAndAuditLogPage from '@/features/cashier-pos/RevenueAndAuditLogPage'
+import CashierSettingsPage from '@/features/cashier-pos/CashierProfileSettings'
+
+// ============================================================
+// Manager / Admin
+// ============================================================
+
 import AnalyticsDashboard from '@/features/manager/analytics/AnalyticsDashboard'
 import MenuManagement from '@/features/manager/menu/MenuManagement'
 import InventoryPage from '@/features/manager/inventory/InventoryPage'
@@ -41,15 +69,34 @@ import HRPage from '@/features/manager/hr/HRPage'
 import PromotionsPage from '@/features/manager/promotions/PromotionsPage'
 import AuditLogsPage from '@/features/manager/audit-logs/AuditLogsPage'
 
-const MANAGER_ADMIN = [UserRole.MANAGER, UserRole.ADMIN]
+// ============================================================
+// Roles
+// ============================================================
+
+const MANAGER_ADMIN = [
+  UserRole.MANAGER,
+  UserRole.ADMIN,
+]
+
+// ============================================================
+// App Routes
+// ============================================================
 
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* ── Public / Auth ── */}
+
+      {/* ======================================================
+          PUBLIC / AUTH
+      ====================================================== */}
+
       <Route path={ROUTES.LOGIN} element={<LoginPage />} />
 
-      {/* ── Customer QR (public, no auth needed) ── */}
+
+      {/* ======================================================
+          CUSTOMER QR — public, không cần login
+      ====================================================== */}
+
       <Route element={<ClientLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/table/:tableId/menu" element={<MenuPage />} />
@@ -62,50 +109,167 @@ export default function AppRoutes() {
         <Route path="/about" element={<AboutUsPage />} />
       </Route>
 
-      {/* ── KDS Kitchen — Chef Portal (Đã gỡ bọc ProtectedRoute để dev UI) ── */}
+
+      {/* ======================================================
+          KITCHEN / KDS — Chef Portal (gỡ ProtectedRoute để dev UI)
+      ====================================================== */}
+
       <Route path="/kitchen" element={<ChefDashboard />} />
       <Route path="/kitchen/queue" element={<ChefKitchenQueue />} />
       <Route path="/kitchen/menu" element={<ChefMenuManagement />} />
       <Route path="/kitchen/inventory" element={<ChefInventory />} />
       <Route path="/kitchen/analytics" element={<ChefAIAnalytics />} />
 
-      {/* ── Cashier POS ── */}
+
+      {/* ======================================================
+          CASHIER POS
+      ====================================================== */}
+
       <Route
         element={
-          <ProtectedRoute allowedRoles={[UserRole.CASHIER, ...MANAGER_ADMIN]}>
+          <ProtectedRoute
+            allowedRoles={[
+              UserRole.CASHIER,
+              ...MANAGER_ADMIN,
+            ]}
+          >
             <CashierLayout />
           </ProtectedRoute>
         }
       >
-        <Route path="/cashier" element={<POSDashboard />} />
+
+        {/* Dashboard */}
+        <Route
+          path="/cashier"
+          element={<POSDashboard />}
+        />
+
+        {/* Trạng thái bàn & sơ đồ tầng */}
+        <Route
+          path="/cashier/tables"
+          element={<TableStatusPage />}
+        />
+
+        {/* Checkout */}
+        <Route
+          path="/cashier/checkout"
+          element={<CashierCheckoutPage />}
+        />
+
+        {/* Chi tiết bàn đang chờ thanh toán */}
+        <Route
+          path="/cashier/pending-checkout"
+          element={<PendingTableDetailCheckout />}
+        />
+
+        {/* Lịch sử giao dịch + hoàn tiền */}
+        <Route
+          path="/cashier/history-refund"
+          element={<HistoryAndRefundPage />}
+        />
+
+        {/* Gộp hóa đơn */}
+        <Route
+          path="/cashier/merge-bill"
+          element={<MergeBillModal />}
+        />
+
+        {/* Tách hóa đơn */}
+        <Route
+          path="/cashier/split-bill"
+          element={<SplitBillModal />}
+        />
+
+        {/* Báo cáo cuối ngày */}
+        <Route
+          path="/cashier/end-of-day"
+          element={<EndOfDayReport />}
+        />
+
+        {/* Thống kê doanh thu & nhật ký audit */}
+        <Route
+          path="/cashier/revenue-audit-log"
+          element={<RevenueAndAuditLogPage />}
+        />
+
+        {/* Cài đặt */}
+        <Route
+          path="/cashier/settings"
+          element={<CashierSettingsPage />}
+        />
+
       </Route>
 
-      {/* ── Manager / Admin Dashboard ── */}
+
+      {/* ======================================================
+          MANAGER / ADMIN
+      ====================================================== */}
+
       <Route
         element={
-          <ProtectedRoute allowedRoles={MANAGER_ADMIN}>
+          <ProtectedRoute
+            allowedRoles={MANAGER_ADMIN}
+          >
             <AdminLayout />
           </ProtectedRoute>
         }
       >
-        <Route path={ROUTES.MANAGER.ROOT} element={<Navigate to={ROUTES.MANAGER.ANALYTICS} replace />} />
-        <Route path={ROUTES.MANAGER.ANALYTICS} element={<AnalyticsDashboard />} />
-        <Route path={ROUTES.MANAGER.MENU} element={<MenuManagement />} />
-        <Route path={ROUTES.MANAGER.INVENTORY} element={<InventoryPage />} />
-        <Route path={ROUTES.MANAGER.HR} element={<HRPage />} />
-        <Route path={ROUTES.MANAGER.PROMOTIONS} element={<PromotionsPage />} />
+
+        <Route
+          path={ROUTES.MANAGER.ROOT}
+          element={
+            <Navigate
+              to={ROUTES.MANAGER.ANALYTICS}
+              replace
+            />
+          }
+        />
+
+        <Route
+          path={ROUTES.MANAGER.ANALYTICS}
+          element={<AnalyticsDashboard />}
+        />
+
+        <Route
+          path={ROUTES.MANAGER.MENU}
+          element={<MenuManagement />}
+        />
+
+        <Route
+          path={ROUTES.MANAGER.INVENTORY}
+          element={<InventoryPage />}
+        />
+
+        <Route
+          path={ROUTES.MANAGER.HR}
+          element={<HRPage />}
+        />
+
+        <Route
+          path={ROUTES.MANAGER.PROMOTIONS}
+          element={<PromotionsPage />}
+        />
+
         <Route
           path={ROUTES.MANAGER.AUDIT_LOGS}
           element={
-            <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+            <ProtectedRoute
+              allowedRoles={[UserRole.ADMIN]}
+            >
               <AuditLogsPage />
             </ProtectedRoute>
           }
         />
+
       </Route>
 
-      {/* ── Fallback ── */}
+
+      {/* ======================================================
+          FALLBACK
+      ====================================================== */}
+
       <Route path="*" element={<Navigate to="/" replace />} />
+
     </Routes>
   )
 }
