@@ -63,9 +63,17 @@ import CashierSettingsPage from '@/features/cashier-pos/CashierProfileSettings'
 // ============================================================
 
 import AnalyticsDashboard from '@/features/manager/analytics/AnalyticsDashboard'
-import MenuManagement from '@/features/manager/menu/MenuManagement'
-import InventoryPage from '@/features/manager/inventory/InventoryPage'
-import HRPage from '@/features/manager/hr/HRPage'
+import FloorMapView from '@/features/manager/floor-map/FloorMapView'
+import MenuView from '@/features/manager/menu/MenuView'
+import InventoryView from '@/features/manager/inventory/InventoryView'
+import SuppliersView from '@/features/manager/suppliers/SuppliersView'
+import AttendanceView from '@/features/manager/atendance/AttendanceView'
+import LeaveView from '@/features/manager/leave-request-approval/LeaveView'
+import ScheduleView from '@/features/manager/staffs-manage/ScheduleView'
+import PeopleView from '@/features/manager/staffs-manage/PeopleView'
+import EmployeesView from '@/features/manager/hr/EmployeesView'
+import OrdersView from '@/features/manager/orders-billing/OrdersView'
+import OverviewView from '@/features/manager/overview/OverviewView'
 import PromotionsPage from '@/features/manager/promotions/PromotionsPage'
 import AuditLogsPage from '@/features/manager/audit-logs/AuditLogsPage'
 
@@ -137,67 +145,16 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       >
-
-        {/* Dashboard */}
-        <Route
-          path="/cashier"
-          element={<POSDashboard />}
-        />
-
-        {/* Trạng thái bàn & sơ đồ tầng */}
-        <Route
-          path="/cashier/tables"
-          element={<TableStatusPage />}
-        />
-
-        {/* Checkout */}
-        <Route
-          path="/cashier/checkout"
-          element={<CashierCheckoutPage />}
-        />
-
-        {/* Chi tiết bàn đang chờ thanh toán */}
-        <Route
-          path="/cashier/pending-checkout"
-          element={<PendingTableDetailCheckout />}
-        />
-
-        {/* Lịch sử giao dịch + hoàn tiền */}
-        <Route
-          path="/cashier/history-refund"
-          element={<HistoryAndRefundPage />}
-        />
-
-        {/* Gộp hóa đơn */}
-        <Route
-          path="/cashier/merge-bill"
-          element={<MergeBillModal />}
-        />
-
-        {/* Tách hóa đơn */}
-        <Route
-          path="/cashier/split-bill"
-          element={<SplitBillModal />}
-        />
-
-        {/* Báo cáo cuối ngày */}
-        <Route
-          path="/cashier/end-of-day"
-          element={<EndOfDayReport />}
-        />
-
-        {/* Thống kê doanh thu & nhật ký audit */}
-        <Route
-          path="/cashier/revenue-audit-log"
-          element={<RevenueAndAuditLogPage />}
-        />
-
-        {/* Cài đặt */}
-        <Route
-          path="/cashier/settings"
-          element={<CashierSettingsPage />}
-        />
-
+        <Route path="/cashier" element={<POSDashboard />} />
+        <Route path="/cashier/tables" element={<TableStatusPage />} />
+        <Route path="/cashier/checkout" element={<CashierCheckoutPage />} />
+        <Route path="/cashier/pending-checkout" element={<PendingTableDetailCheckout />} />
+        <Route path="/cashier/history-refund" element={<HistoryAndRefundPage />} />
+        <Route path="/cashier/merge-bill" element={<MergeBillModal />} />
+        <Route path="/cashier/split-bill" element={<SplitBillModal />} />
+        <Route path="/cashier/end-of-day" element={<EndOfDayReport />} />
+        <Route path="/cashier/revenue-audit-log" element={<RevenueAndAuditLogPage />} />
+        <Route path="/cashier/settings" element={<CashierSettingsPage />} />
       </Route>
 
 
@@ -215,51 +172,43 @@ export default function AppRoutes() {
         }
       >
 
+        {/* Root → Overview */}
         <Route
           path={ROUTES.MANAGER.ROOT}
-          element={
-            <Navigate
-              to={ROUTES.MANAGER.ANALYTICS}
-              replace
-            />
-          }
+          element={<Navigate to={ROUTES.MANAGER.OVERVIEW} replace />}
         />
 
-        <Route
-          path={ROUTES.MANAGER.ANALYTICS}
-          element={<AnalyticsDashboard />}
-        />
+        {/* ───────────── VẬN HÀNH ───────────── */}
 
-        <Route
-          path={ROUTES.MANAGER.MENU}
-          element={<MenuManagement />}
-        />
+        <Route path={ROUTES.MANAGER.OVERVIEW} element={<OverviewView />} />
+        <Route path={ROUTES.MANAGER.FLOOR_MAP} element={<FloorMapView />} />
+        <Route path={ROUTES.MANAGER.MENU} element={<MenuView />} />
+        <Route path={ROUTES.MANAGER.ORDERS} element={<OrdersView />} />
 
-        <Route
-          path={ROUTES.MANAGER.INVENTORY}
-          element={<InventoryPage />}
-        />
+        {/* ───────────── NHÂN SỰ ───────────── */}
 
-        <Route
-          path={ROUTES.MANAGER.HR}
-          element={<HRPage />}
-        />
+        <Route path={ROUTES.MANAGER.HR} element={<PeopleView />} />
+        <Route path={ROUTES.MANAGER.EMPLOYEE_RECORDS} element={<EmployeesView />} />
+        <Route path={ROUTES.MANAGER.ATTENDANCE} element={<AttendanceView />} />
+        <Route path={ROUTES.MANAGER.LEAVE_REQUESTS} element={<LeaveView />} />
+        <Route path={ROUTES.MANAGER.SCHEDULING} element={<ScheduleView />} />
 
-        <Route
-          path={ROUTES.MANAGER.PROMOTIONS}
-          element={<PromotionsPage />}
-        />
+        {/* ───────────── KHO ───────────── */}
 
-        <Route
-          path={ROUTES.MANAGER.AUDIT_LOGS}
-          element={
-            <ProtectedRoute
-              allowedRoles={[UserRole.ADMIN]}
-            >
-              <AuditLogsPage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path={ROUTES.MANAGER.INVENTORY} element={<InventoryView />} />
+        <Route path={ROUTES.MANAGER.SUPPLIERS} element={<SuppliersView />} />
+
+        {/* ───────────── KINH DOANH ───────────── */}
+
+        <Route path={ROUTES.MANAGER.PROMOTIONS} element={<PromotionsPage />} />
+
+        {/* ───────────── AI / ANALYTICS ───────────── */}
+
+        <Route path={ROUTES.MANAGER.ANALYTICS} element={<AnalyticsDashboard />} />
+
+        {/* ───────────── QUẢN TRỊ ───────────── */}
+
+        <Route path={ROUTES.MANAGER.AUDIT_LOGS} element={<AuditLogsPage />} />
 
       </Route>
 

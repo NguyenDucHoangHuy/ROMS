@@ -9,8 +9,6 @@
       "@/*": ["./src/*"]
     },
 
-    "ignoreDeprecations": "6.0",
-
     "module": "esnext",
     "types": ["vite/client"],
     "allowArbitraryExtensions": true,
