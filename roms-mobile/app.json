@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -25,9 +25,15 @@
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "edgeToEdgeEnabled": true
+      "package": "com.anonymous.romsmobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,6 +45,11 @@
           "locationWhenInUsePermission": "Cho phép ROMS truy cập vị trí của bạn để thực hiện điểm danh ca làm."
         }
       ]
-    ]
+    ],
+    "androidStatusBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#F9F8F5",
+      "translucent": false
+    }
   }
 }
