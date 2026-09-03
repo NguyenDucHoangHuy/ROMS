@@ -52,27 +52,17 @@ const sidebarItems: SidebarItem[] = [
 ];
 
 const CashierSidebar: React.FC = () => {
-  const { isEnglish } = useCashierLocale();
+  const { t } = useCashierLocale();
 
-  const labels = isEnglish
-    ? {
-        tables: "Tables & Areas",
-        checkout: "Checkout",
-        history: "History & Refunds",
-        revenue: "Revenue & Audit",
-        endOfDay: "End of Day Report",
-        settings: "Settings",
-        support: "Support",
-      }
-    : {
-        tables: "Bàn & Khu vực",
-        checkout: "Thanh toán",
-        history: "Lịch sử & Hoàn tiền",
-        revenue: "Doanh thu & Audit",
-        endOfDay: "Báo cáo cuối ngày",
-        settings: "Cài đặt",
-        support: "Hỗ trợ",
-      };
+  const labels = {
+    tables: t("Bàn & Khu vực"),
+    checkout: t("Thanh toán"),
+    history: t("Lịch sử & Hoàn tiền"),
+    revenue: t("Doanh thu & Audit"),
+    endOfDay: t("Báo cáo cuối ngày"),
+    settings: t("Cài đặt"),
+    support: t("Hỗ trợ"),
+  };
 
   const localizedItems = sidebarItems.map((item, index) => ({
     ...item,

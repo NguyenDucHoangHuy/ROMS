@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import CashierSidebar from "@/components/cashier/CashierSidebar";
+import { useCashierLocale } from "@/contexts/CashierLocaleContext";
 import {
   Bell,
   Check,
@@ -1317,6 +1318,8 @@ function RefundModal({
  * ======================================================= */
 
 export default function PosHistoryAndRefundPage() {
+  const { language } = useCashierLocale();
+  void language;
   const [searchParams] = useSearchParams();
 
   const [orders, setOrders] =

@@ -9,9 +9,8 @@ import ProtectedRoute from './ProtectedRoute'
 // ============================================================
 
 import AdminLayout from '@/layouts/AdminLayout'
-import KitchenLayout from '@/layouts/KitchenLayout'
 import CashierLayout from '@/layouts/CashierLayout'
-import ClientLayout from '@/layouts/ClientLayout'
+import ClientLayout from '@/layouts/ClientLayout' 
 
 // ============================================================
 // Auth

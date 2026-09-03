@@ -21,9 +21,9 @@ enum RoleName {
 
 enum TableStatus {
   AVAILABLE // Xanh lá - Bàn trống
-  RESERVED  // Vàng - Đã đặt cọc/khóa trước
-  OCCUPIED  // Đỏ - Đang có khách ăn
-  CLEANING  // Xám - Đang dọn bàn
+  RESERVED // Vàng - Đã đặt cọc/khóa trước
+  OCCUPIED // Đỏ - Đang có khách ăn
+  CLEANING // Xám - Đang dọn bàn
 }
 
 enum ReservationStatus {
@@ -40,9 +40,9 @@ enum DepositStatus {
 }
 
 enum SessionStatus {
-  OPEN      // Đang ăn
-  PAYING    // Đang tính tiền
-  CLOSED    // Đã thanh toán xong
+  OPEN // Đang ăn
+  PAYING // Đang tính tiền
+  CLOSED // Đã thanh toán xong
   CANCELLED
 }
 
@@ -56,18 +56,18 @@ enum OrderStatus {
 }
 
 enum OrderItemStatus {
-  PENDING   // Chờ Bếp nhận
-  COOKING   // Bếp đang nấu (Tự động trừ kho)
-  READY     // Nấu xong
-  SERVED    // Phục vụ đã bưng ra
-  REJECTED  // Bếp từ chối (Hết hàng)
+  PENDING // Chờ Bếp nhận
+  COOKING // Bếp đang nấu (Tự động trừ kho)
+  READY // Nấu xong
+  SERVED // Phục vụ đã bưng ra
+  REJECTED // Bếp từ chối (Hết hàng)
 }
 
 enum StockMovementType {
-  IN_RECEIPT    // Nhập hàng (+)
-  OUT_COOKING   // Xuất nấu (-)
+  IN_RECEIPT // Nhập hàng (+)
+  OUT_COOKING // Xuất nấu (-)
   WASTE_SPOILED // Hủy thiu hỏng (-)
-  ADJUSTMENT    // Điều chỉnh kiểm kê (+/-)
+  ADJUSTMENT // Điều chỉnh kiểm kê (+/-)
 }
 
 enum BillStatus {
@@ -112,8 +112,8 @@ model Role {
 }
 
 model Permission {
-  id          String   @id @default(uuid()) @db.Uuid
-  code        String   @unique
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique
   name        String
   description String?
 
@@ -145,20 +145,20 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  role                Role               @relation(fields: [roleId], references: [id])
-  refreshTokens       RefreshToken[]
-  openedSessions      DiningSession[]    @relation("OpenedBySessions")
-  closedSessions      DiningSession[]    @relation("ClosedBySessions")
-  waiterOrders        Order[]            @relation("WaiterOrders")
-  stockReceipts       StockReceipt[]
-  stockMovements      StockMovement[]
-  cashierBills        Bill[]             @relation("CashierBills")
-  cashierPayments     Payment[]          @relation("CashierPayments")
-  approvedRefunds     Refund[]           @relation("ManagerRefunds")
-  shiftAssignments    ShiftAssignment[]
-  attendances         Attendance[]
-  auditLogs           AuditLog[]
-  reservations        Reservation[]
+  role             Role              @relation(fields: [roleId], references: [id])
+  refreshTokens    RefreshToken[]
+  openedSessions   DiningSession[]   @relation("OpenedBySessions")
+  closedSessions   DiningSession[]   @relation("ClosedBySessions")
+  waiterOrders     Order[]           @relation("WaiterOrders")
+  stockReceipts    StockReceipt[]
+  stockMovements   StockMovement[]
+  cashierBills     Bill[]            @relation("CashierBills")
+  cashierPayments  Payment[]         @relation("CashierPayments")
+  approvedRefunds  Refund[]          @relation("ManagerRefunds")
+  shiftAssignments ShiftAssignment[]
+  attendances      Attendance[]
+  auditLogs        AuditLog[]
+  reservations     Reservation[]
 
   @@map("users")
 }
@@ -182,29 +182,29 @@ model RefreshToken {
 // MODULE 2: RESTAURANT SETUP DOMAIN
 // ==========================================
 model Table {
-  id                 String      @id @default(uuid()) @db.Uuid
-  tableNumber        String      @unique @map("table_number")
-  floor              Int         @default(1)
-  capacity           Int         @default(4)
-  status             TableStatus @default(AVAILABLE)
-  qrCodeToken        String      @unique @map("qr_code_token")
+  id          String      @id @default(uuid()) @db.Uuid
+  tableNumber String      @unique @map("table_number")
+  floor       Int         @default(1)
+  capacity    Int         @default(4)
+  status      TableStatus @default(AVAILABLE)
+  qrCodeToken String      @unique @map("qr_code_token")
 
   // KHÓA NGOẠI TỰ THAM CHIẾU (Self-Referencing FK cho gộp bàn)
-  mergedIntoTableId String?     @map("merged_into_table_id") @db.Uuid
-  mergedIntoTable   Table?      @relation("TableMerging", fields: [mergedIntoTableId], references: [id], onDelete: SetNull)
-  linkedTables      Table[]     @relation("TableMerging")
+  mergedIntoTableId String? @map("merged_into_table_id") @db.Uuid
+  mergedIntoTable   Table?  @relation("TableMerging", fields: [mergedIntoTableId], references: [id], onDelete: SetNull)
+  linkedTables      Table[] @relation("TableMerging")
 
-  diningSessions    DiningSession[]
-  reservations      Reservation[]
+  diningSessions DiningSession[]
+  reservations   Reservation[]
 
   @@map("tables")
 }
 
 model Category {
-  id           String   @id @default(uuid()) @db.Uuid
-  name         String
-  displayOrder Int      @default(0) @map("display_order")
-  isActive     Boolean  @default(true) @map("is_active")
+  id           String  @id @default(uuid()) @db.Uuid
+  name         String  @unique
+  displayOrder Int     @default(0) @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
 
   menuItems MenuItem[]
 
@@ -212,20 +212,24 @@ model Category {
 }
 
 model MenuItem {
-  id               String   @id @default(uuid()) @db.Uuid
-  categoryId       String   @map("category_id") @db.Uuid
-  name             String
-  price            Decimal  @db.Decimal(12, 2)
-  costPrice        Decimal? @map("cost_price") @db.Decimal(12, 2)
-  imageUrl         String?  @map("image_url")
-  description      String?
-  isAvailable      Boolean  @default(true) @map("is_available")
+  id              String   @id @default(uuid()) @db.Uuid
+  categoryId      String   @map("category_id") @db.Uuid
+  name            String
+  description     String?
+  price           Decimal  @db.Decimal(12, 2)
+  costPrice       Decimal? @map("cost_price") @db.Decimal(12, 2)
+  imageUrl        String?  @map("image_url")
+  avgRating       Decimal? @default(0) @map("avg_rating") @db.Decimal(3, 2)
+  preparationTime Int?     @map("preparation_time")
+  tags            String?
+  isAvailable     Boolean  @default(true) @map("is_available")
   isRecommendable Boolean  @default(false) @map("is_recommendable")
 
   category   Category    @relation(fields: [categoryId], references: [id])
   orderItems OrderItem[]
   recipes    Recipe[]
 
+  @@index([categoryId])
   @@map("menu_items")
 }
 
@@ -315,10 +319,10 @@ model OrderItem {
 // MODULE 4: INVENTORY & BOM DOMAIN
 // ==========================================
 model InventoryItem {
-  id                 String  @id @default(uuid()) @db.Uuid
-  itemName           String  @map("item_name")
-  unit               String  // "kg", "gram", "lon", "chai"...
-  currentStock       Decimal @default(0) @map("current_stock") @db.Decimal(12, 3)
+  id                String  @id @default(uuid()) @db.Uuid
+  itemName          String  @map("item_name")
+  unit              String // "kg", "gram", "lon", "chai"...
+  currentStock      Decimal @default(0) @map("current_stock") @db.Decimal(12, 3)
   minAlertThreshold Decimal @default(0) @map("min_alert_threshold") @db.Decimal(12, 3)
 
   recipes             Recipe[]
@@ -380,8 +384,8 @@ model StockMovement {
   createdAt       DateTime          @default(now()) @map("created_at")
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
-  createdBy     User?          @relation(fields: [createdById], references: [id])
-  orderItem     OrderItem?     @relation(fields: [orderItemId], references: [id])
+  createdBy     User?         @relation(fields: [createdById], references: [id])
+  orderItem     OrderItem?    @relation(fields: [orderItemId], references: [id])
 
   @@map("stock_movements")
 }
@@ -390,17 +394,17 @@ model StockMovement {
 // MODULE 5: BILLING & PROMOTIONS
 // ==========================================
 model Promotion {
-  id              String    @id @default(uuid()) @db.Uuid
-  code            String    @unique
+  id              String   @id @default(uuid()) @db.Uuid
+  code            String   @unique
   description     String?
-  discountPercent Float?    @map("discount_percent")
-  discountAmount  Decimal?  @map("discount_amount") @db.Decimal(12, 2)
-  maxDiscount     Decimal?  @map("max_discount") @db.Decimal(12, 2)
-  minOrderAmount  Decimal?  @map("min_order_amount") @db.Decimal(12, 2)
-  startDate       DateTime  @map("start_date")
-  endDate         DateTime  @map("end_date")
-  isActive        Boolean   @default(true) @map("is_active")
-  createdAt       DateTime  @default(now()) @map("created_at")
+  discountPercent Float?   @map("discount_percent")
+  discountAmount  Decimal? @map("discount_amount") @db.Decimal(12, 2)
+  maxDiscount     Decimal? @map("max_discount") @db.Decimal(12, 2)
+  minOrderAmount  Decimal? @map("min_order_amount") @db.Decimal(12, 2)
+  startDate       DateTime @map("start_date")
+  endDate         DateTime @map("end_date")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   bills Bill[]
 
@@ -467,7 +471,7 @@ model Shift {
   id        String @id @default(uuid()) @db.Uuid
   name      String
   startTime String @map("start_time") // "08:00"
-  endTime   String @map("end_time")   // "16:00"
+  endTime   String @map("end_time") // "16:00"
 
   shiftAssignments ShiftAssignment[]
 
@@ -508,7 +512,7 @@ model Attendance {
 model AuditLog {
   id         String   @id @default(uuid()) @db.Uuid
   userId     String?  @map("user_id") @db.Uuid
-  action     String   // e.g., "UPDATE_MENU_PRICE", "REFUND_PAYMENT"
+  action     String // e.g., "UPDATE_MENU_PRICE", "REFUND_PAYMENT"
   entityName String   @map("entity_name")
   entityId   String?  @map("entity_id")
   oldValues  Json?    @map("old_values")
