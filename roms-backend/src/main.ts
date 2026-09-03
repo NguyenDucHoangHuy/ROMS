@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -26,7 +28,13 @@ async function bootstrap() {
     }),
   );
 
-  // 4. Cấu hình Swagger API Documentation
+  // 4. Đăng ký Global Exception Filter — bắt MỌI lỗi, chuẩn hoá response lỗi
+  app.useGlobalFilters(new AllExceptionsFilter());
+
+  // 5. Đăng ký Global Interceptor — wrap response thành ApiResponse chuẩn
+  app.useGlobalInterceptors(new TransformInterceptor());
+
+  // 6. Cấu hình Swagger API Documentation
   const config = new DocumentBuilder()
     .setTitle('ROMS API Specifications')
     .setDescription('Restaurant Operations Management System API Documentation')
