@@ -103,7 +103,9 @@ function Sidebar({
           {navGroups.map((group) => (
             <div className="nav-group" key={group.label}>
               <p>{group.label}</p>
-              {group.items.map(([label, Icon]) => (
+              {group.items.map((item) => {
+                const [label, Icon] = item;
+                return (
                 <button
                   key={label}
                   onClick={() => {
@@ -114,7 +116,8 @@ function Sidebar({
                 >
                   <Icon /> <span>{label}</span>
                 </button>
-              ))}
+                );
+              })}
             </div>
           ))}
         </div>

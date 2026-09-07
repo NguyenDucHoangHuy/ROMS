@@ -68,12 +68,27 @@ export interface ProcessPaymentPayload {
 export interface KitchenOrderItem {
   id: string
   orderId: string
+  orderCode: string
   tableId: string
   tableName: string
+  waiterName: string
+  menuItemId: string
   menuItemName: string
+  categoryName: string
   quantity: number
   note: string | null
   status: OrderItemStatus
+  rejectionReason?: string | null
   isPriority: boolean
+  isAvailable: boolean
   createdAt: string
+  recipes?: {
+    id: string
+    inventoryItemId: string
+    itemName: string
+    unit: string
+    quantityRequired: number
+    currentStock: number
+    minAlertThreshold: number
+  }[]
 }

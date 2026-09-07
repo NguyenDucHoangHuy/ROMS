@@ -1,571 +1,532 @@
-import React, { useState } from 'react';
-import ChefSidebar from './ChefSidebar';
+import React, { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import ChefSidebar from './ChefSidebar'
 import {
-  Search,
+  AlertTriangle,
   Bell,
-  SlidersHorizontal,
-  Flame,
-  Printer,
-  MessageSquare,
   Check,
   CheckCheck,
-  Volume2,
+  Crown,
+  Flame,
+  Loader2,
+  MessageSquare,
+  Printer,
   RefreshCw,
-  //Clock,
-  Filter,
-} from 'lucide-react';
+  Search,
+  SlidersHorizontal,
+  Star,
+  Volume2,
+  XCircle,
+} from 'lucide-react'
+import { queryKeys } from '@/constants/queryKeys'
+import { orderService } from '@/services/modules/orderService'
+import { getSocket } from '@/lib/socket'
+import type { KitchenOrderItem } from '@/types/order.types'
 
-export type Station = 'Grill' | 'Sauté' | 'Garde Manger' | 'All';
-export type OrderStatus = 'incoming' | 'in_progress' | 'window';
+type Station = 'All' | 'Appetizer' | 'Main' | 'Dessert' | 'Drink'
+type TicketStatus = 'incoming' | 'in_progress' | 'window'
 
-export interface OrderItem {
-  id: string;
-  name: string;
-  quantity: number;
-  station: 'Grill' | 'Sauté' | 'Garde Manger';
-  status: 'pending' | 'cooking' | 'done';
-  modifier?: string;
-  notes?: string[];
-  allergy?: string;
-  progressPercent?: number; // 0 to 100
+interface TicketOrder {
+  id: string
+  orderNumber: string
+  table: string
+  tableId: string
+  isPriority: boolean
+  server: string
+  elapsedTime: string
+  isOverdue: boolean
+  status: TicketStatus
+  items: KitchenOrderItem[]
 }
 
-export interface TicketOrder {
-  id: string;
-  orderNumber: string;
-  table: string;
-  isVIP?: boolean;
-  server: string;
-  elapsedTime: string;
-  isOverdue?: boolean;
-  status: OrderStatus;
-  items: OrderItem[];
+const stations: Station[] = ['All', 'Appetizer', 'Main', 'Dessert', 'Drink']
+
+function getElapsedTime(createdAt: string) {
+  const diffMs = Date.now() - new Date(createdAt).getTime()
+  const totalSeconds = Math.max(0, Math.floor(diffMs / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
-const INITIAL_ORDERS: TicketOrder[] = [
-  {
-    id: 't-1',
-    orderNumber: '#8492',
-    table: 'TABLE 12',
-    server: 'Mia',
-    elapsedTime: '02:15',
-    status: 'incoming',
-    items: [
-      {
-        id: 'i-1',
-        name: 'Wagyu Ribeye',
-        quantity: 1,
-        station: 'Grill',
-        status: 'pending',
-        modifier: '** MR (Med Rare)',
-        notes: ['- No Asparagus', '+ Sub Pommes Frites'],
-      },
-      {
-        id: 'i-2',
-        name: 'Scallop Crudo',
-        quantity: 1,
-        station: 'Garde Manger',
-        status: 'pending',
-        allergy: 'ALLERGY: Nuts',
-      },
-    ],
-  },
-  {
-    id: 't-2',
-    orderNumber: '#8493',
-    table: 'TABLE 4',
-    server: 'David',
-    elapsedTime: '00:45',
-    status: 'incoming',
-    items: [
-      {
-        id: 'i-3',
-        name: 'Truffle Risotto',
-        quantity: 2,
-        station: 'Sauté',
-        status: 'pending',
-      },
-    ],
-  },
-  {
-    id: 't-3',
-    orderNumber: '#8488',
-    table: 'TABLE 8',
-    isVIP: true,
-    server: 'Elena',
-    elapsedTime: '18:30',
-    isOverdue: true,
-    status: 'in_progress',
-    items: [
-      {
-        id: 'i-4',
-        name: 'Oysters (Dozen)',
-        quantity: 1,
-        station: 'Garde Manger',
-        status: 'done',
-      },
-      {
-        id: 'i-5',
-        name: 'Duck Breast',
-        quantity: 1,
-        station: 'Sauté',
-        status: 'cooking',
-        progressPercent: 70,
-      },
-    ],
-  },
-  {
-    id: 't-4',
-    orderNumber: '#8490',
-    table: 'TABLE 22',
-    server: 'James',
-    elapsedTime: '08:12',
-    status: 'in_progress',
-    items: [
-      {
-        id: 'i-6',
-        name: 'Branzino Whole',
-        quantity: 2,
-        station: 'Grill',
-        status: 'cooking',
-        progressPercent: 45,
-      },
-    ],
-  },
-  {
-    id: 't-5',
-    orderNumber: '#8485',
-    table: 'BAR 3',
-    server: 'Alex',
-    elapsedTime: '14:20',
-    status: 'window',
-    items: [
-      {
-        id: 'i-7',
-        name: 'Artisan Cheese Board',
-        quantity: 1,
-        station: 'Garde Manger',
-        status: 'done',
-      },
-      {
-        id: 'i-8',
-        name: 'House Focaccia',
-        quantity: 1,
-        station: 'Garde Manger',
-        status: 'done',
-      },
-    ],
-  },
-];
+function getTicketStatus(items: KitchenOrderItem[]): TicketStatus {
+  if (items.every((item) => item.status === 'READY')) return 'window'
+  if (items.some((item) => item.status === 'COOKING' || item.status === 'READY')) return 'in_progress'
+  return 'incoming'
+}
+
+function groupItemsIntoTickets(items: KitchenOrderItem[]): TicketOrder[] {
+  const map = new Map<string, KitchenOrderItem[]>()
+
+  items.forEach((item) => {
+    const current = map.get(item.orderId) ?? []
+    map.set(item.orderId, [...current, item])
+  })
+
+  return Array.from(map.values()).map((group) => {
+    const first = group[0]
+    const elapsedMinutes = Math.floor((Date.now() - new Date(first.createdAt).getTime()) / 60000)
+
+    return {
+      id: first.orderId,
+      orderNumber: first.orderCode,
+      table: first.tableName,
+      tableId: first.tableId,
+      isPriority: group.some((item) => item.isPriority),
+      server: first.waiterName,
+      elapsedTime: getElapsedTime(first.createdAt),
+      isOverdue: elapsedMinutes >= 15,
+      status: getTicketStatus(group),
+      items: group,
+    }
+  })
+}
+
+function getStationBadge(station: string) {
+  switch (station) {
+    case 'Main':
+      return 'bg-rose-50 text-rose-700 border border-rose-200/60'
+    case 'Appetizer':
+      return 'bg-amber-50 text-amber-800 border border-amber-200/60'
+    case 'Dessert':
+      return 'bg-violet-50 text-violet-800 border border-violet-200/60'
+    case 'Drink':
+      return 'bg-sky-50 text-sky-800 border border-sky-200/60'
+    default:
+      return 'bg-slate-100 text-slate-700 border border-slate-200'
+  }
+}
 
 export const ChefKitchenQueue: React.FC = () => {
-  const [orders, setOrders] = useState<TicketOrder[]>(INITIAL_ORDERS);
-  const [selectedStation, setSelectedStation] = useState<Station>('All');
-  const [isExpediterActive, setIsExpediterActive] = useState<boolean>(true);
+  const queryClient = useQueryClient()
+  const [selectedStation, setSelectedStation] = useState<Station>('All')
+  const [isExpediterActive, setIsExpediterActive] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  // Chuyển đơn từ Incoming -> In Progress
-  const handleFireOrder = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId
-          ? {
-              ...o,
-              status: 'in_progress',
-              items: o.items.map((it) => ({
-                ...it,
-                status: 'cooking',
-                progressPercent: 20,
-              })),
-            }
-          : o
+  const { data = [], isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: queryKeys.orders.kitchenQueue(),
+    queryFn: orderService.getKitchenQueue,
+    refetchInterval: 30000,
+  })
+
+  useEffect(() => {
+    const socket = getSocket()
+    if (!socket.connected) socket.connect()
+    socket.emit('kitchen:join')
+
+    const refreshKitchen = () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.orders.kitchenQueue() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.lowStock() })
+    }
+
+    socket.on('kitchen:queue-updated', refreshKitchen)
+    socket.on('order:item-updated', refreshKitchen)
+    socket.on('inventory:updated', refreshKitchen)
+
+    return () => {
+      socket.off('kitchen:queue-updated', refreshKitchen)
+      socket.off('order:item-updated', refreshKitchen)
+      socket.off('inventory:updated', refreshKitchen)
+      socket.emit('kitchen:leave')
+    }
+  }, [queryClient])
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({
+      orderId,
+      itemId,
+      status,
+      rejectedReason,
+    }: {
+      orderId: string
+      itemId: string
+      status: KitchenOrderItem['status']
+      rejectedReason?: string
+    }) => orderService.updateItemStatus(orderId, itemId, status, rejectedReason),
+    onSuccess: () => {
+      setActionError(null)
+      queryClient.invalidateQueries({ queryKey: queryKeys.orders.kitchenQueue() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.lowStock() })
+    },
+    onError: (error) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Kitchen action failed. Please try again.'
+      setActionError(message)
+    },
+  })
+
+  const prioritizeMutation = useMutation({
+    mutationFn: ({ orderId, itemId }: { orderId: string; itemId: string }) =>
+      orderService.prioritizeItem(orderId, itemId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.orders.kitchenQueue() }),
+  })
+
+  const tickets = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
+    return groupItemsIntoTickets(data).filter((ticket) => {
+      const stationMatch =
+        selectedStation === 'All' ||
+        ticket.items.some((item) => item.categoryName === selectedStation)
+      const searchMatch =
+        !query ||
+        ticket.orderNumber.toLowerCase().includes(query) ||
+        ticket.table.toLowerCase().includes(query) ||
+        ticket.items.some((item) => item.menuItemName.toLowerCase().includes(query))
+
+      return stationMatch && searchMatch
+    })
+  }, [data, searchQuery, selectedStation])
+
+  const incomingOrders = tickets.filter((order) => order.status === 'incoming')
+  const inProgressOrders = tickets.filter((order) => order.status === 'in_progress')
+  const windowOrders = tickets.filter((order) => order.status === 'window')
+
+  const handleFireOrder = (order: TicketOrder) => {
+    order.items
+      .filter((item) => item.status === 'PENDING')
+      .forEach((item) =>
+        updateStatusMutation.mutate({ orderId: order.id, itemId: item.id, status: 'COOKING' }),
       )
-    );
-  };
+  }
 
-  // Chuyển đơn từ In Progress -> Window (Đã xong)
-  const handleMarkReady = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId
-          ? {
-              ...o,
-              status: 'window',
-              items: o.items.map((it) => ({
-                ...it,
-                status: 'done',
-                progressPercent: 100,
-              })),
-            }
-          : o
+  const handleMarkReady = (order: TicketOrder) => {
+    order.items
+      .filter((item) => item.status === 'COOKING' || item.status === 'PENDING')
+      .forEach((item) =>
+        updateStatusMutation.mutate({ orderId: order.id, itemId: item.id, status: 'READY' }),
       )
-    );
-  };
+  }
 
-  // Hoàn tất đơn tại Window khi Runner bưng món
-  const handlePageRunner = (orderId: string) => {
-    setOrders((prev) => prev.filter((o) => o.id !== orderId));
-  };
+  const handlePageRunner = (order: TicketOrder) => {
+    order.items
+      .filter((item) => item.status === 'READY')
+      .forEach((item) =>
+        updateStatusMutation.mutate({ orderId: order.id, itemId: item.id, status: 'SERVED' }),
+      )
+  }
 
-  // Lọc theo trạm bếp
-  const filterByStation = (orderList: TicketOrder[]) => {
-    if (selectedStation === 'All') return orderList;
-    return orderList.filter((o) =>
-      o.items.some((it) => it.station === selectedStation)
-    );
-  };
+  const handleRejectItem = (item: KitchenOrderItem) => {
+    const reason = window.prompt('Reason for rejecting this item?', 'Out of stock')
+    if (!reason) return
 
-  const incomingOrders = filterByStation(orders.filter((o) => o.status === 'incoming'));
-  const inProgressOrders = filterByStation(orders.filter((o) => o.status === 'in_progress'));
-  const windowOrders = filterByStation(orders.filter((o) => o.status === 'window'));
+    updateStatusMutation.mutate({
+      orderId: item.orderId,
+      itemId: item.id,
+      status: 'REJECTED',
+      rejectedReason: reason,
+    })
+  }
 
-  const stations: Station[] = ['All', 'Grill', 'Sauté', 'Garde Manger'];
+  const renderTicket = (order: TicketOrder, variant: TicketStatus) => (
+    <div
+      key={order.id}
+      className={`bg-white rounded-xl shadow-sm hover:shadow-md transition-all border flex flex-col overflow-hidden ${
+        order.isOverdue ? 'border-rose-400/80 ring-2 ring-rose-500/10' : 'border-slate-200/90'
+      }`}
+    >
+      <div className="p-4 space-y-3 flex-1">
+        <div className="flex items-start justify-between border-b border-slate-100 pb-2.5">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-extrabold tracking-wider text-slate-700">
+                {order.table}
+              </span>
+              {order.isPriority && (
+                <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded">
+                  <Crown className="w-3 h-3" /> Priority
+                </span>
+              )}
+            </div>
+            <span className="text-base font-bold text-slate-900 mt-0.5 block font-serif">
+              Order {order.orderNumber}
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="text-[11px] text-slate-400 block font-medium">Server: {order.server}</span>
+            <span
+              className={`text-xs font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
+                order.isOverdue
+                  ? 'text-rose-700 bg-rose-100/80 animate-pulse'
+                  : 'text-indigo-600 bg-indigo-50'
+              }`}
+            >
+              +{order.elapsedTime}
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-2.5 pt-0.5">
+          {order.items.map((item) => (
+            <div key={item.id} className="space-y-1.5">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  {item.status === 'READY' ? (
+                    <div className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </div>
+                  ) : (
+                    <span className="w-5 h-5 rounded-md bg-amber-500 text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-sm">
+                      {item.quantity}
+                    </span>
+                  )}
+                  <span
+                    className={`font-semibold truncate ${
+                      item.status === 'READY' ? 'text-slate-400 line-through' : 'text-slate-900'
+                    }`}
+                  >
+                    {item.menuItemName}
+                  </span>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${getStationBadge(item.categoryName)}`}>
+                  {item.categoryName}
+                </span>
+              </div>
+
+              {item.note && <div className="pl-7 text-[11px] text-slate-500 font-normal">{item.note}</div>}
+              {item.status !== 'READY' && (
+                <div className="pl-7">
+                  <button
+                    type="button"
+                    onClick={() => handleRejectItem(item)}
+                    className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 hover:text-rose-700"
+                  >
+                    <XCircle className="w-3 h-3" />
+                    Reject item
+                  </button>
+                </div>
+              )}
+              {item.recipes?.some((recipe) => recipe.currentStock <= recipe.minAlertThreshold) && (
+                <div className="pl-7 pt-0.5">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                    <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                    Low ingredient stock
+                  </span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {variant === 'incoming' && (
+        <div className="grid grid-cols-3 bg-slate-50/70 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 border-r border-slate-200/70 transition"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>Print</span>
+          </button>
+          <button
+            onClick={() => prioritizeMutation.mutate({ orderId: order.id, itemId: order.items[0].id })}
+            className="py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 border-r border-slate-200/70 transition"
+          >
+            <Star className="w-3.5 h-3.5" />
+            <span>Priority</span>
+          </button>
+          <button
+            disabled={updateStatusMutation.isPending}
+            onClick={() => handleFireOrder(order)}
+            className="py-2.5 flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:opacity-60 transition"
+          >
+            <Flame className="w-3.5 h-3.5 fill-white/20" />
+            <span>Fire</span>
+          </button>
+        </div>
+      )}
+
+      {variant === 'in_progress' && (
+        <div className="grid grid-cols-2 bg-amber-50/40 border-t border-amber-100">
+          <button
+            type="button"
+            onClick={() => window.alert(`Message sent to ${order.server}`)}
+            className="py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 hover:bg-amber-100/60 border-r border-amber-200/60 transition"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+            <span>Chat</span>
+          </button>
+          <button
+            disabled={updateStatusMutation.isPending}
+            onClick={() => handleMarkReady(order)}
+            className="py-2.5 flex items-center justify-center gap-1.5 text-xs font-bold text-amber-900 bg-amber-200/80 hover:bg-amber-300/80 disabled:opacity-60 transition"
+          >
+            <Check className="w-4 h-4 text-amber-800 stroke-[2.5]" />
+            <span>Mark Ready</span>
+          </button>
+        </div>
+      )}
+
+      {variant === 'window' && (
+        <button
+          disabled={updateStatusMutation.isPending}
+          onClick={() => handlePageRunner(order)}
+          className="w-full py-2.5 flex items-center justify-center gap-2 text-xs font-bold text-emerald-900 bg-emerald-100/90 hover:bg-emerald-200/80 disabled:opacity-60 border-t border-emerald-200 transition shadow-sm"
+        >
+          <Volume2 className="w-4 h-4 text-emerald-800" />
+          <span>Page Runner</span>
+        </button>
+      )}
+    </div>
+  )
 
   return (
-    <div className="flex h-screen w-full bg-[#f8f9fa] text-slate-800 font-sans overflow-hidden">
-      {/* 1. SIDEBAR */}
+    <div className="flex h-screen w-full bg-[#f6f7fb] text-slate-800 font-sans overflow-hidden">
       <ChefSidebar />
 
-      {/* 2. MAIN WORKSPACE */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header Bar */}
-        <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0">
+        <header className="h-16 bg-white/90 backdrop-blur border-b border-slate-200/80 px-8 flex items-center justify-between shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
           <div className="relative w-96">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search orders, recipes, or stock..."
-              className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search orders, dishes, or notes..."
+              className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all shadow-sm"
             />
           </div>
           <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+            <button className="relative p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition">
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
             </button>
-            <button className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition">
-              <SlidersHorizontal className="w-5 h-5" />
+            <button className="p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition">
+              <SlidersHorizontal className="w-4 h-4" />
             </button>
           </div>
         </header>
 
-        {/* Title Bar & Filter Actions */}
-        <div className="px-8 pt-6 pb-4 shrink-0 flex items-center justify-between flex-wrap gap-4">
+        <div className="px-8 pt-7 pb-4 shrink-0 flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-3xl font-serif font-bold text-slate-900 leading-tight">
-              Kitchen Queue
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Friday Night Dinner Service • <span className="font-semibold text-slate-700">{orders.length} Open Orders</span>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-serif">
+                Kitchen Display
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
+                DB Live Service
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Dinner Shift • <span className="font-semibold text-slate-800">{tickets.length} Active Tickets</span>
+              {isFetching && <span className="ml-2 text-amber-700">Refreshing...</span>}
             </p>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Expediter Status Toggle */}
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setIsExpediterActive(!isExpediterActive)}
-              className="flex items-center gap-2 px-3.5 py-2 bg-slate-200/80 hover:bg-slate-200 rounded-full text-xs font-semibold text-slate-700 transition"
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition shadow-sm border ${
+                isExpediterActive
+                  ? 'bg-rose-50 border-rose-200/80 text-rose-700 hover:bg-rose-100/70'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
             >
-              <span
-                className={`w-2.5 h-2.5 rounded-full ${
-                  isExpediterActive ? 'bg-red-500 animate-pulse' : 'bg-slate-400'
-                }`}
-              ></span>
-              <span>Expediter {isExpediterActive ? 'Active' : 'Paused'}</span>
+              <span className={`w-2 h-2 rounded-full ${isExpediterActive ? 'bg-rose-500 animate-pulse' : 'bg-slate-400'}`}></span>
+              <span>Expediter {isExpediterActive ? 'Live' : 'Paused'}</span>
             </button>
-
-            {/* Station Filter Tabs */}
-            <div className="flex items-center bg-[#edece8] p-1 rounded-2xl">
-              {stations.map((st) => {
-                const isActive = selectedStation === st;
-                return (
-                  <button
-                    key={st}
-                    onClick={() => setSelectedStation(st)}
-                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition ${
-                      isActive
-                        ? 'bg-[#8b5a19] text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {st === 'All' ? 'All Stations' : st}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* 3. KANBAN QUEUE BOARD */}
-        <div className="flex-1 px-8 pb-8 grid grid-cols-3 gap-6 overflow-hidden min-h-0">
-          {/* COLUMN 1: INCOMING */}
-          <div className="flex flex-col h-full bg-transparent overflow-hidden">
-            <div className="flex items-center justify-between pb-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-serif font-bold text-slate-900">Incoming</h2>
-                <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center">
-                  {incomingOrders.length}
-                </span>
-              </div>
-              <Filter className="w-4 h-4 text-slate-400 cursor-pointer" />
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1.5">
-              {incomingOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="bg-white rounded-2xl border-2 border-[#8b5a19]/80 shadow-sm overflow-hidden flex flex-col"
-                >
-                  <div className="p-4 space-y-3 flex-1">
-                    {/* Header */}
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <span className="text-xs font-bold tracking-wider text-slate-700 block">
-                          {order.table}
-                        </span>
-                        <span className="text-lg font-serif font-bold text-slate-900">
-                          Order {order.orderNumber}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs text-slate-400 block">Server: {order.server}</span>
-                        <span className="text-sm font-bold text-slate-800">{order.elapsedTime}</span>
-                      </div>
-                    </div>
-
-                    {/* Order Items List */}
-                    <div className="space-y-3 pt-1">
-                      {order.items.map((item) => (
-                        <div key={item.id} className="space-y-1">
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center shrink-0">
-                                {item.quantity}
-                              </span>
-                              <span className="font-semibold text-slate-900">{item.name}</span>
-                            </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-600 rounded">
-                              {item.station}
-                            </span>
-                          </div>
-
-                          {/* Modifiers & Notes */}
-                          {item.modifier && (
-                            <div className="pl-7">
-                              <span className="inline-block text-[11px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">
-                                {item.modifier}
-                              </span>
-                            </div>
-                          )}
-
-                          {item.notes && (
-                            <div className="pl-7 text-[11px] font-medium text-slate-500 space-y-0.5">
-                              {item.notes.map((n, idx) => (
-                                <p key={idx}>{n}</p>
-                              ))}
-                            </div>
-                          )}
-
-                          {item.allergy && (
-                            <div className="pl-7 pt-0.5">
-                              <span className="inline-block text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded tracking-wide">
-                                {item.allergy}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="grid grid-cols-2 bg-slate-50 border-t border-slate-100">
-                    <button className="py-2.5 flex items-center justify-center gap-2 text-xs font-bold text-slate-700 hover:bg-slate-100 border-r border-slate-200 transition">
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>Print</span>
-                    </button>
-                    <button
-                      onClick={() => handleFireOrder(order.id)}
-                      className="py-2.5 flex items-center justify-center gap-2 text-xs font-bold text-white bg-[#8b5a19] hover:bg-[#724813] transition"
-                    >
-                      <Flame className="w-3.5 h-3.5" />
-                      <span>Fire Order</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* COLUMN 2: IN PROGRESS */}
-          <div className="flex flex-col h-full bg-transparent overflow-hidden">
-            <div className="flex items-center justify-between pb-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-serif font-bold text-slate-900">In Progress</h2>
-                <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center shadow-sm">
-                  {inProgressOrders.length}
-                </span>
-              </div>
-              <RefreshCw className="w-4 h-4 text-slate-400 cursor-pointer" />
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1.5">
-              {inProgressOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className={`bg-white rounded-2xl shadow-sm border-l-4 overflow-hidden flex flex-col ${
-                    order.isOverdue
-                      ? 'border-l-red-600 border border-slate-200'
-                      : 'border-l-amber-500 border border-slate-200'
+            <button
+              onClick={() => refetch()}
+              className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <div className="flex items-center bg-slate-200/60 p-1 rounded-xl border border-slate-200/60">
+              {stations.map((station) => (
+                <button
+                  key={station}
+                  onClick={() => setSelectedStation(station)}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    selectedStation === station
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <div className="p-4 space-y-3 flex-1">
-                    {/* Header */}
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={`text-xs font-bold tracking-wider ${
-                              order.isVIP ? 'text-red-600 font-extrabold' : 'text-slate-700'
-                            }`}
-                          >
-                            {order.table} {order.isVIP && '(VIP)'}
-                          </span>
-                        </div>
-                        <span className="text-lg font-serif font-bold text-slate-900">
-                          Order {order.orderNumber}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs text-slate-400 block">Server: {order.server}</span>
-                        <span
-                          className={`text-sm font-bold ${
-                            order.isOverdue ? 'text-red-600' : 'text-slate-800'
-                          }`}
-                        >
-                          {order.elapsedTime}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Cooking Items List */}
-                    <div className="space-y-3 pt-1">
-                      {order.items.map((item) => (
-                        <div key={item.id} className="space-y-1.5">
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2">
-                              {item.status === 'done' ? (
-                                <Check className="w-4 h-4 text-slate-400 shrink-0" />
-                              ) : (
-                                <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
-                                  {item.quantity}
-                                </span>
-                              )}
-                              <span
-                                className={`font-semibold ${
-                                  item.status === 'done'
-                                    ? 'text-slate-400 line-through'
-                                    : 'text-slate-900'
-                                }`}
-                              >
-                                {item.name}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-600 rounded">
-                              {item.station}
-                            </span>
-                          </div>
-
-                          {/* Progress Bar for cooking item */}
-                          {item.status === 'cooking' && (
-                            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                              <div
-                                className="bg-[#8b5a19] h-full rounded-full transition-all duration-300"
-                                style={{ width: `${item.progressPercent || 40}%` }}
-                              ></div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="grid grid-cols-2 bg-amber-50/50 border-t border-amber-100">
-                    <button className="py-2.5 flex items-center justify-center gap-2 text-xs font-bold text-slate-700 hover:bg-amber-100/50 border-r border-amber-200 transition">
-                      <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Chat</span>
-                    </button>
-                    <button
-                      onClick={() => handleMarkReady(order.id)}
-                      className="py-2.5 flex items-center justify-center gap-1.5 text-xs font-bold text-amber-900 hover:bg-amber-200/60 bg-amber-100/80 transition"
-                    >
-                      <Check className="w-4 h-4 text-amber-800" />
-                      <span>Mark Ready</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* COLUMN 3: WINDOW (THE PASS) */}
-          <div className="flex flex-col h-full bg-transparent overflow-hidden">
-            <div className="flex items-center justify-between pb-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-serif font-bold text-slate-900">Window</h2>
-                <span className="w-6 h-6 rounded-full bg-slate-300 text-slate-800 text-xs font-bold flex items-center justify-center">
-                  {windowOrders.length}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1.5">
-              {windowOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col"
-                >
-                  <div className="p-4 space-y-3 flex-1">
-                    {/* Header */}
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <span className="text-xs font-bold tracking-wider text-slate-700 block">
-                          {order.table}
-                        </span>
-                        <span className="text-lg font-serif font-bold text-slate-900">
-                          Order {order.orderNumber}
-                        </span>
-                      </div>
-                      <span className="text-xs text-slate-400">Server: {order.server}</span>
-                    </div>
-
-                    {/* All Items Done Checklist */}
-                    <div className="space-y-2 pt-1">
-                      {order.items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-2.5 text-sm">
-                          <CheckCheck className="w-4 h-4 text-slate-700 shrink-0" />
-                          <span className="font-semibold text-slate-800">{item.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Page Runner Button */}
-                  <button
-                    onClick={() => handlePageRunner(order.id)}
-                    className="w-full py-3 flex items-center justify-center gap-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border-t border-slate-200 transition"
-                  >
-                    <Volume2 className="w-4 h-4 text-slate-600" />
-                    <span>Page Runner</span>
-                  </button>
-                </div>
+                  {station === 'All' ? 'All Stations' : station}
+                </button>
               ))}
             </div>
           </div>
         </div>
+
+        {isError && (
+          <div className="mx-8 mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+            Cannot load kitchen queue. Check backend and database connection.
+          </div>
+        )}
+
+        {actionError && (
+          <div className="mx-8 mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+            {actionError}
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="flex-1 grid place-items-center">
+            <Loader2 className="w-8 h-8 animate-spin text-amber-600" />
+          </div>
+        ) : (
+          <div className="flex-1 px-8 pb-6 grid grid-cols-3 gap-6 overflow-hidden min-h-0">
+            <div className="flex flex-col h-full overflow-hidden bg-slate-100/50 rounded-2xl p-3 border border-slate-200/60">
+              <ColumnHeader title="Incoming" count={incomingOrders.length} />
+              <div className="flex-1 overflow-y-auto space-y-3.5 pr-1">
+                {incomingOrders.map((order) => renderTicket(order, 'incoming'))}
+              </div>
+            </div>
+
+            <div className="flex flex-col h-full overflow-hidden bg-amber-50/30 rounded-2xl p-3 border border-amber-200/50">
+              <ColumnHeader title="In Progress" count={inProgressOrders.length} tone="amber" />
+              <div className="flex-1 overflow-y-auto space-y-3.5 pr-1">
+                {inProgressOrders.map((order) => renderTicket(order, 'in_progress'))}
+              </div>
+            </div>
+
+            <div className="flex flex-col h-full overflow-hidden bg-emerald-50/30 rounded-2xl p-3 border border-emerald-200/50">
+              <ColumnHeader title="Window (Pass)" count={windowOrders.length} tone="emerald" />
+              <div className="flex-1 overflow-y-auto space-y-3.5 pr-1">
+                {windowOrders.map((order) => renderTicket(order, 'window'))}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default ChefKitchenQueue;
+function ColumnHeader({
+  title,
+  count,
+  tone = 'slate',
+}: {
+  title: string
+  count: number
+  tone?: 'slate' | 'amber' | 'emerald'
+}) {
+  const badgeClass =
+    tone === 'amber'
+      ? 'bg-amber-500 text-white'
+      : tone === 'emerald'
+        ? 'bg-emerald-600 text-white'
+        : 'bg-slate-200 text-slate-700'
+
+  return (
+    <div className="flex items-center justify-between pb-3 px-1 shrink-0">
+      <div className="flex items-center gap-2.5">
+        <h2 className="text-base font-bold text-slate-800 tracking-tight">{title}</h2>
+        <span className={`w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center ${badgeClass}`}>
+          {count}
+        </span>
+      </div>
+      {tone === 'emerald' && <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />}
+    </div>
+  )
+}
+
+export default ChefKitchenQueue

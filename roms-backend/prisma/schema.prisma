@@ -302,6 +302,7 @@ model OrderItem {
   costPrice       Decimal?        @map("cost_price") @db.Decimal(12, 2)
   notes           String?
   itemStatus      OrderItemStatus @default(PENDING) @map("item_status")
+  isPriority      Boolean         @default(false) @map("is_priority")
   rejectionReason String?         @map("rejection_reason")
 
   order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)

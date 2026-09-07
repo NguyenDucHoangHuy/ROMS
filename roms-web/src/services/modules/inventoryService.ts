@@ -13,14 +13,28 @@ export interface InventoryItem {
 
 export interface StockReceipt {
   id: string
-  inventoryItemId: string
-  inventoryItem: InventoryItem
-  quantity: number
+  receiptCode: string
+  details: {
+    id: string
+    inventoryItemId: string
+    itemName: string
+    unit: string
+    quantity: number
+    unitPrice: number
+  }[]
   totalCost: number
-  supplierName: string
-  receivedAt: string
-  approvedById: string | null
-  isApproved: boolean
+  supplierName: string | null
+  createdAt: string
+  managerName: string
+}
+
+export interface CreateStockReceiptPayload {
+  supplierName?: string
+  details: {
+    inventoryItemId: string
+    quantity: number
+    unitPrice: number
+  }[]
 }
 
 export const inventoryService = {
@@ -42,7 +56,7 @@ export const inventoryService = {
   getReceipts: () =>
     apiClient.get<StockReceipt[]>('/inventory/receipts').then((r) => r.data),
 
-  createReceipt: (payload: Omit<StockReceipt, 'id' | 'inventoryItem' | 'receivedAt' | 'approvedById' | 'isApproved'>) =>
+  createReceipt: (payload: CreateStockReceiptPayload) =>
     apiClient.post<StockReceipt>('/inventory/receipts', payload).then((r) => r.data),
 
   approveReceipt: (receiptId: string) =>
