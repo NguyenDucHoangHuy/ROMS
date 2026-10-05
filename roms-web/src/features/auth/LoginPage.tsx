@@ -1,19 +1,22 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const location = useLocation()
+  const { login, register } = useAuth()
   
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login')
 
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
+    name: '',
+    phone: '',
     password: '',
     confirmPassword: '',
   })
+  const [errorMessage, setErrorMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -21,16 +24,32 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (activeTab === 'login') {
-      await login({ email: formData.email, password: formData.password })
-      navigate('/')
-    } else {
-      if (formData.password !== formData.confirmPassword) {
-        alert('Mật khẩu xác nhận không khớp!')
-        return
+    setErrorMessage('')
+    if (!/^\+?[0-9]{9,15}$/.test(formData.phone.replace(/[\s()-]/g, ''))) {
+      setErrorMessage('Enter a valid phone number (9–15 digits).')
+      return
+    }
+
+    if (activeTab === 'register' && formData.password !== formData.confirmPassword) {
+      setErrorMessage('The passwords do not match.')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      if (activeTab === 'login') {
+        await login({ phone: formData.phone.replace(/[\s()-]/g, ''), password: formData.password })
+      } else {
+        await register({ name: formData.name.trim(), phone: formData.phone.replace(/[\s()-]/g, ''), password: formData.password })
       }
-      alert('Đăng ký thành công! Vui lòng đăng nhập.')
-      setActiveTab('login')
+      const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo || '/'
+      navigate(redirectTo, { replace: true })
+    } catch (error) {
+      const responseMessage = (error as { response?: { data?: { message?: string | string[] } } })
+        .response?.data?.message
+      setErrorMessage(Array.isArray(responseMessage) ? responseMessage.join(' ') : responseMessage || 'Unable to authenticate. Please check your details and try again.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -53,7 +72,7 @@ export default function LoginPage() {
             to="/"
             className="text-stone-400 hover:text-stone-600 transition text-sm font-medium"
           >
-            ✕ Đóng
+            ✕ Close
           </Link>
         </div>
 
@@ -98,10 +117,10 @@ export default function LoginPage() {
               <div className="relative">
                 <input
                   type="text"
-                  name="username"
+                  name="name"
                   required
-                  placeholder="User Name"
-                  value={formData.username}
+                  placeholder="Full name"
+                  value={formData.name}
                   onChange={handleChange}
                   className="w-full border-b border-stone-200 py-3 text-stone-800 placeholder-stone-300 focus:border-orange-500 focus:outline-none transition bg-transparent text-sm"
                 />
@@ -110,11 +129,12 @@ export default function LoginPage() {
 
             <div className="relative">
               <input
-                type="email"
-                name="email"
+                  type="tel"
+                  name="phone"
                 required
-                placeholder="Email"
-                value={formData.email}
+                  autoComplete="tel"
+                  placeholder="Phone number"
+                  value={formData.phone}
                 onChange={handleChange}
                 className="w-full border-b border-stone-200 py-3 text-stone-800 placeholder-stone-300 focus:border-orange-500 focus:outline-none transition bg-transparent text-sm"
               />
@@ -122,10 +142,11 @@ export default function LoginPage() {
 
             <div className="relative">
               <input
-                type="password"
+                  type="password"
                 name="password"
                 required
                 placeholder="Password"
+                  autoComplete={activeTab === 'login' ? 'current-password' : 'new-password'}
                 value={formData.password}
                 onChange={handleChange}
                 className="w-full border-b border-stone-200 py-3 text-stone-800 placeholder-stone-300 focus:border-orange-500 focus:outline-none transition bg-transparent text-sm"
@@ -146,24 +167,22 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* ── Hàng dưới cùng: Forgot password bên trái & Button Log in bên phải ── */}
+            {errorMessage && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</p>}
+
+            {/* Submit action */}
             <div className="pt-6 flex items-center justify-between">
               {activeTab === 'login' ? (
-                <a
-                  href="#forgot"
-                  className="text-xs text-stone-400 hover:text-orange-500 transition"
-                >
-                  Forgot password?
-                </a>
+                <span />
               ) : (
                 <div /> /* Element trống để giữ button luôn ở bên phải khi ở tab Register */
               )}
 
               <button
                 type="submit"
+                disabled={isSubmitting}
                 className="w-full sm:w-36 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg shadow-orange-500/30 transition transform hover:-translate-y-0.5 active:translate-y-0 text-sm"
               >
-                {activeTab === 'login' ? 'Log in' : 'Register'}
+                {isSubmitting ? 'Please wait…' : activeTab === 'login' ? 'Log in' : 'Register'}
               </button>
             </div>
           </form>

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
@@ -35,6 +36,9 @@ import {
 } from 'react-icons/fa'
 
 import Footer from '../../components/Footer.tsx'
+import { menuService } from '../../services/modules/menuService'
+import { queryKeys } from '../../constants/queryKeys'
+import { useCartStore } from '../../stores/cartStore'
 
 // Danh sách ảnh slide cho phần Header
 const heroImages = [
@@ -50,38 +54,6 @@ const featureItems = [
   { icon: UtensilsCrossed, title: 'Fresh Ingredients', detail: 'Carefully selected every day' },
   { icon: ChefHat, title: 'Dedicated Chefs', detail: 'Over 10 years of experience' },
   { icon: Star, title: 'Cozy Atmosphere', detail: 'Perfect for every gathering' },
-]
-
-const popularDishes = [
-  {
-    id: 1,
-    name: 'Creamy Alfredo Pasta',
-    price: '$12.99',
-    rating: 5,
-    tag: 'Best Seller',
-    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR26_Qrxmnqa87MO9ijZvxIuITlbdsmlMyJl80t9q6R3ySCN--8Pput2FN-&s=10',
-  },
-  {
-    id: 2,
-    name: 'Grilled Chicken Steak',
-    price: '$15.99',
-    rating: 4.8,
-    image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 3,
-    name: 'Margherita Pizza',
-    price: '$11.99',
-    rating: 4.9,
-    image: 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 4,
-    name: 'Chocolate Lava Cake',
-    price: '$7.99',
-    rating: 5,
-    image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=600&q=80',
-  },
 ]
 
 const services = [
@@ -110,6 +82,11 @@ const services = [
 
 export default function HomePage() {
   const navigate = useNavigate()
+  const addItem = useCartStore((state) => state.addItem)
+  const { data: popularDishes = [] } = useQuery({
+    queryKey: queryKeys.menu.all(),
+    queryFn: menuService.getAll,
+  })
   const videoRef = useRef<HTMLVideoElement>(null)
 
   // State quản lý slide hình ảnh cho Hero Header
@@ -128,7 +105,7 @@ export default function HomePage() {
     return () => clearInterval(timer)
   }, [])
 
-  const handleSearchSubmit = (e) => {
+  const handleSearchSubmit = (e:any) => {
     e.preventDefault()
     if (searchQuery.trim()) {
       navigate(`/menu?search=${encodeURIComponent(searchQuery)}`)
@@ -174,7 +151,7 @@ export default function HomePage() {
             <p className="mb-5 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.22em] text-orange-400">
               <Sparkles size={16} /> A table full of stories
             </p>
-            <h1 className="font-serif text-2xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 className="font-serif text-2xl !text-white font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
               Delicious food,
               <span className="font-['Dancing_Script'] block text-orange-400 italic">made with love.</span>
             </h1>
@@ -183,7 +160,7 @@ export default function HomePage() {
 
             <div className="mt-9 flex flex-wrap gap-4">
               <button
-                onClick={() => navigate('/table/demo/menu')}
+                onClick={() => navigate('/menu')}
                 className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-950/60 transition hover:bg-orange-400"
               >
                 <UtensilsCrossed size={18} />  Explore Our Menu
@@ -290,38 +267,34 @@ export default function HomePage() {
             </button>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {popularDishes.map((dish) => (
+              {popularDishes.filter((dish) => dish.isAvailable && !dish.isLowStock).slice(0, 4).map((dish) => (
                 <div
                   key={dish.id}
+                  onClick={() => navigate(`/dish/${dish.id}`)}
                   className="group overflow-hidden rounded-2xl bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
                 >
                   <div className="relative h-52 w-full overflow-hidden">
                     <img
-                      src={dish.image}
+                      src={dish.imageUrl || '/Home/default-dish.jpg'}
                       alt={dish.name}
                       className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                     />
-                    {dish.tag && (
+                    {dish.isRecommendable && (
                       <span className="absolute left-3 top-3 rounded-md bg-orange-500 px-2.5 py-1 text-xs font-semibold text-white">
-                        {dish.tag}
+                        Recommended
                       </span>
                     )}
                   </div>
                   <div className="p-5">
                     <h3 className="font-bold text-stone-900 text-lg">{dish.name}</h3>
 
-                    <div className="mt-2 flex items-center gap-1.5 text-amber-500">
-                      <div className="flex">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} size={15} fill="currentColor" className="text-amber-400" />
-                        ))}
-                      </div>
-                      <span className="text-xs font-bold text-stone-600">({dish.rating})</span>
-                    </div>
-
                     <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xl font-bold text-orange-500">{dish.price}</span>
+                      <span className="text-xl font-bold text-orange-500">${dish.price.toFixed(2)}</span>
                       <button
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          addItem(dish, 1)
+                        }}
                         title="Thêm vào giỏ hàng"
                         className="grid h-10 w-10 place-items-center rounded-full bg-orange-500 text-white shadow-md transition hover:bg-orange-600 active:scale-95"
                       >

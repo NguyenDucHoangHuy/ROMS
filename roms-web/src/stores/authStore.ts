@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { User, AuthTokens, LoginPayload } from '@/types/user.types'
-import type { UserRole } from '@/constants/roles'
+import type { User, AuthTokens } from '@/types/user.types'
 
 interface AuthState {
   user: User | null
@@ -11,7 +10,6 @@ interface AuthState {
   // Actions
   setAuth: (user: User, tokens: AuthTokens) => void
   updateTokens: (tokens: AuthTokens) => void
-  login: (payload?: LoginPayload) => Promise<void> | void // <-- THÊM DÒNG NÀY
   logout: () => void
 }
 
@@ -27,21 +25,6 @@ export const useAuthStore = create<AuthState>()(
 
       updateTokens: (tokens) =>
         set({ tokens }),
-
-      // <-- THÊM HÀM LOGIN NÀY (Có thể gọi API thực tế hoặc Mock Data)
-      login: async (payload) => {
-        // Mock data giả lập người dùng sau khi đăng nhập thành công
-        const mockUser: User = {
-          id: 'user_123',
-          name: payload?.email?.split('@')[0] || 'Khách hàng',
-          email: payload?.email || null,
-          phone: payload?.phone || null,
-          role: 'CUSTOMER' as any,
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-      },
 
       logout: () =>
         set({ user: null, tokens: null, isAuthenticated: false }),

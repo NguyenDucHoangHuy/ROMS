@@ -47,7 +47,7 @@ export default function AboutUsPage() {
   return (
     <div className="min-h-screen bg-white text-stone-900 font-sans overflow-hidden">
       {/* 1. HERO HEADER SECTION */}
-      <section className="relative bg-stone-900 py-24 text-white">
+      <section className="relative bg-stone-900 py-44 text-white">
         <div className="absolute inset-0 opacity-40">
           <img
             src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80"
@@ -57,7 +57,7 @@ export default function AboutUsPage() {
         </div>
         <div className="relative mx-auto max-w-7xl px-6 text-center space-y-4">
           <span className="text-sm font-bold uppercase tracking-widest text-amber-400">Welcome To ROMS</span>
-          <h1 className="font-serif text-4xl sm:text-6xl font-bold">About Our Restaurant</h1>
+          <h1 className="font-serif !text-white text-4xl sm:text-6xl font-bold">About Our Restaurant</h1>
           <p className="mx-auto max-w-2xl text-stone-300 text-sm sm:text-base leading-relaxed">
             Discover our passion for authentic culinary experiences, fresh local ingredients, and unforgettable dining moments in Da Nang.
           </p>

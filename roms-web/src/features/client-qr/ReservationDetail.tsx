@@ -14,8 +14,8 @@ export default function ReservationDetail() {
           </div>
 
           <div>
-            <h1 className="font-serif text-2xl font-bold">Đặt Bàn Thành Công!</h1>
-            <p className="text-xs text-stone-500 mt-1">Mã phiếu: <strong className="text-stone-900">{id || 'RES-88921'}</strong></p>
+            <h1 className="font-serif text-2xl font-bold">Reservation Successful!</h1>
+            <p className="text-xs text-stone-500 mt-1">Reservation Number: <strong className="text-stone-900">{id || 'RES-88921'}</strong></p>
           </div>
 
           {/* QR CODE FOR CHECKIN */}
@@ -25,17 +25,17 @@ export default function ReservationDetail() {
               alt="QR Code Checkin"
               className="mx-auto h-36 w-36"
             />
-            <p className="text-[11px] text-stone-400 mt-2">Đưa mã QR này cho thu ngân khi đến nhà hàng</p>
+            <p className="text-[11px] text-stone-400 mt-2">Present this QR code to the cashier when you arrive at the restaurant</p>
           </div>
 
           <div className="space-y-3 text-left border-t border-stone-100 pt-4 text-sm text-stone-600">
             <div className="flex justify-between">
-              <span className="flex items-center gap-2"><Users size={16} /> Số lượng:</span>
-              <span className="font-bold text-stone-900">2 Khách</span>
+              <span className="flex items-center gap-2"><Users size={16} /> Quantity:</span>
+              <span className="font-bold text-stone-900">2 Customers</span>
             </div>
             <div className="flex justify-between">
-              <span className="flex items-center gap-2"><Clock size={16} /> Thời gian:</span>
-              <span className="font-bold text-stone-900">18:30 - Hôm nay</span>
+              <span className="flex items-center gap-2"><Clock size={16} /> Time:</span>
+              <span className="font-bold text-stone-900">18:30 - Today</span>
             </div>
           </div>
 
@@ -44,13 +44,13 @@ export default function ReservationDetail() {
               onClick={() => navigate('/')}
               className="flex-1 rounded-xl bg-stone-100 py-3 text-xs font-bold text-stone-700 hover:bg-stone-200 transition"
             >
-              Trang Chủ
+              Home
             </button>
             <button
-              onClick={() => navigate('/table/demo/menu')}
+              onClick={() => navigate('/menu')}
               className="flex-1 rounded-xl bg-orange-500 py-3 text-xs font-bold text-white shadow-md hover:bg-orange-600 transition"
             >
-              Xem Thực Đơn
+              View Menu
             </button>
           </div>
         </div>

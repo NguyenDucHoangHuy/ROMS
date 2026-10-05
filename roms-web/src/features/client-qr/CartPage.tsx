@@ -1,13 +1,39 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useState } from 'react'
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Utensils } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
+import { orderService } from '@/services/modules/orderService'
 
 export default function CartPage() {
   const navigate = useNavigate()
-  const { items, updateQuantity, removeItem } = useCartStore()
+  const { tableId } = useParams()
+  const { items, updateQuantity, removeItem, clearCart } = useCartStore()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const subtotal = items.reduce((sum, item) => sum + item.menuItem.price * item.quantity, 0)
   const tax = subtotal * 0.08
+
+  const handleCheckout = async () => {
+    if (!tableId) {
+      navigate('/reservation')
+      return
+    }
+    setIsSubmitting(true)
+    setSubmitError('')
+    try {
+      const order = await orderService.create({
+        tableId,
+        items: items.map(({ menuItem, quantity }) => ({ menuItemId: menuItem.id, quantity })),
+      })
+      clearCart()
+      navigate(`/table/${tableId}/order-status`, { state: { orderId: order.id } })
+    } catch {
+      setSubmitError('We could not send your order. Please try again or ask a waiter for help.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="bg-[#fffaf2] min-h-screen py-12 text-stone-900">
@@ -21,7 +47,7 @@ export default function CartPage() {
             <Utensils className="mx-auto text-stone-300 mb-4" size={48} />
             <p className="text-stone-500 font-medium">Your cart is currently empty.</p>
             <button
-              onClick={() => navigate('/table/demo/menu')}
+              onClick={() => navigate('/menu')}
               className="mt-6 inline-flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3 font-bold text-white shadow-md hover:bg-orange-600 transition"
             >
               Explore the menu
@@ -95,11 +121,13 @@ export default function CartPage() {
                 </div>
               </div>
 
+              {submitError && <p role="alert" className="text-sm text-red-600">{submitError}</p>}
               <button
-                onClick={() => navigate('/reservation')}
+                onClick={handleCheckout}
+                disabled={isSubmitting}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition"
               >
-                Proceed to Checkout<ArrowRight size={16} />
+                {isSubmitting ? 'Sending order…' : tableId ? 'Place order' : 'Proceed to reservation'}<ArrowRight size={16} />
               </button>
             </div>
           </div>

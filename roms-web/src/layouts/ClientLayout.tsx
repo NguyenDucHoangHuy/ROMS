@@ -7,7 +7,7 @@ import { useCartStore } from '@/stores/cartStore'
 /** Public layout cho các trang customer; navbar chuyển thành menu thu gọn ở mobile. */
 const navItems = [
   { label: 'Home', to: '/' },
-  { label: 'Menu', to: '/table/demo/menu' },
+  { label: 'Menu', to: '/menu' },
   { label: 'About Us', to: '/about' },
   { label: 'Reservation', to: '/reservation' },
 ]
@@ -20,6 +20,15 @@ export default function ClientLayout() {
   )
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const query = searchTerm.trim()
+    if (!query) return
+    navigate(`/menu?search=${encodeURIComponent(query)}`)
+    setIsSearchOpen(false)
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -50,14 +59,14 @@ export default function ClientLayout() {
             {user ? (
               <button className="grid h-10 w-10 place-items-center rounded-full bg-stone-950 text-sm font-bold text-orange-400" title={user.name}>{user.name[0]?.toUpperCase()}</button>
             ) : (
-              <button onClick={() => navigate('/login')} className="hidden rounded-full bg-stone-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-orange-500 sm:block">Đăng nhập</button>
+              <button onClick={() => navigate('/login')} className="hidden rounded-full bg-stone-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-orange-500 sm:block">Log In</button>
             )}
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="grid h-10 w-10 place-items-center rounded-full lg:hidden" aria-label="Mở menu">{isMenuOpen ? <X size={21} /> : <Menu size={21} />}</button>
           </div>
         </div>
         {isMenuOpen && <nav className="border-t border-stone-100 bg-white px-6 py-4 lg:hidden">{navItems.map((item) => <NavLink onClick={() => setIsMenuOpen(false)} key={item.label} to={item.to} className="block py-3 text-sm font-semibold text-stone-700">{item.label}</NavLink>)}</nav>}
       </header>
-      {isSearchOpen && <div className="fixed inset-x-0 top-24 z-50 mx-auto max-w-md px-4"><div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3 shadow-2xl"><Search size={18} className="text-orange-500" /><input autoFocus placeholder="Tìm món bạn yêu thích..." className="w-full outline-none text-sm" /><button onClick={() => setIsSearchOpen(false)} className="text-xs font-semibold text-stone-500">Đóng</button></div></div>}
+      {isSearchOpen && <div className="fixed inset-x-0 top-24 z-50 mx-auto max-w-md px-4"><form onSubmit={handleSearch} className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3 shadow-2xl"><Search size={18} className="text-orange-500" /><input autoFocus value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search dishes and categories" className="w-full outline-none text-sm" /><button type="submit" className="text-xs font-semibold text-orange-600">Search</button><button type="button" onClick={() => setIsSearchOpen(false)} className="text-xs font-semibold text-stone-500">Close</button></form></div>}
       <main>
         <Outlet />
       </main>

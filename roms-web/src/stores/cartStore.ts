@@ -1,82 +1,88 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type { MenuItem } from '@/types/menu.types'
 
 export interface CartItem {
   menuItem: MenuItem
   quantity: number
-  note: string
 }
 
-interface CartState {
-  tableId: string | null
+interface CartStore {
   items: CartItem[]
-  isOpen: boolean
-
-  // Actions
-  setTableId: (tableId: string) => void
   addItem: (menuItem: MenuItem, quantity?: number) => void
-  removeItem: (menuItemId: string) => void
-  updateQuantity: (menuItemId: string, quantity: number) => void
-  updateNote: (menuItemId: string, note: string) => void
+  removeItem: (menuItem_id: string) => void
+  updateQuantity: (menuItem_id: string, quantity: number) => void
   clearCart: () => void
-  toggleCart: () => void
-
-  // Computed getters
-  getTotalItems: () => number
-  getTotalAmount: () => number
 }
 
-export const useCartStore = create<CartState>()((set, get) => ({
-  tableId: null,
-  items: [],
-  isOpen: false,
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000 // 1 tuần tính theo milliseconds
 
-  setTableId: (tableId) => set({ tableId }),
+export const useCartStore = create<CartStore>()(
+  persist(
+    (set, get) => ({
+      items: [],
 
-  addItem: (menuItem, quantity = 1) => {
-    const { items } = get()
-    const existing = items.find((i) => i.menuItem.id === menuItem.id)
-    if (existing) {
-      set({
-        items: items.map((i) =>
-          i.menuItem.id === menuItem.id
-            ? { ...i, quantity: i.quantity + quantity }
-            : i,
-        ),
-      })
-    } else {
-      set({ items: [...items, { menuItem, quantity, note: '' }] })
-    }
-  },
+      // Thêm món vào giỏ hàng (từ Menu hoặc Icon Add to cart)
+      addItem: (menuItem, quantity = 1) => {
+        const currentItems = get().items
+        const existingIndex = currentItems.findIndex(
+          (item) => item.menuItem.id === menuItem.id
+        )
 
-  removeItem: (menuItemId) =>
-    set({ items: get().items.filter((i) => i.menuItem.id !== menuItemId) }),
+        if (existingIndex > -1) {
+          const updatedItems = [...currentItems]
+          updatedItems[existingIndex].quantity += quantity
+          set({ items: updatedItems })
+        } else {
+          set({ items: [...currentItems, { menuItem, quantity }] })
+        }
+      },
 
-  updateQuantity: (menuItemId, quantity) => {
-    if (quantity <= 0) {
-      get().removeItem(menuItemId)
-      return
-    }
-    set({
-      items: get().items.map((i) =>
-        i.menuItem.id === menuItemId ? { ...i, quantity } : i,
-      ),
-    })
-  },
+      // Xóa món khỏi giỏ
+      removeItem: (menuItem_id) => {
+        set({ items: get().items.filter((item) => item.menuItem.id !== menuItem_id) })
+      },
 
-  updateNote: (menuItemId, note) =>
-    set({
-      items: get().items.map((i) =>
-        i.menuItem.id === menuItemId ? { ...i, note } : i,
-      ),
+      // Cập nhật số lượng
+      updateQuantity: (menuItem_id, quantity) => {
+        if (quantity <= 0) {
+          get().removeItem(menuItem_id)
+        } else {
+          set({
+            items: get().items.map((item) =>
+              item.menuItem.id === menuItem_id ? { ...item, quantity } : item
+            ),
+          })
+        }
+      },
+
+      // Xóa sạch giỏ hàng (Gọi hàm này sau khi đặt bàn / thanh toán thành công)
+      clearCart: () => set({ items: [] }),
     }),
+    {
+      name: 'restaurant_cart_storage',
+      storage: createJSONStorage(() => localStorage),
+      
+      // Xử lý tự động xóa giỏ hàng sau 1 tuần
+      onRehydrateStorage: () => (state) => {
+        if (!state) return
 
-  clearCart: () => set({ items: [], tableId: null }),
-
-  toggleCart: () => set({ isOpen: !get().isOpen }),
-
-  getTotalItems: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
-
-  getTotalAmount: () =>
-    get().items.reduce((sum, i) => sum + i.menuItem.price * i.quantity, 0),
-}))
+        const storedData = localStorage.getItem('restaurant_cart_storage')
+        if (storedData) {
+          try {
+            const parsed = JSON.parse(storedData)
+            const updatedAt = parsed?.state?.updatedAt || Date.now()
+            
+            // Kiểm tra xem đã quá 1 tuần chưa
+            if (Date.now() - updatedAt > ONE_WEEK_MS) {
+              state.clearCart()
+              localStorage.removeItem('restaurant_cart_storage')
+            }
+          } catch (e) {
+            console.error('Error parsing cart expiration:', e)
+          }
+        }
+      },
+    }
+  )
+)
