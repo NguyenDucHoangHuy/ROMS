@@ -1,9 +1,12 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Star, ShoppingCart, Sparkles, SlidersHorizontal } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
 import Footer from '@/components/Footer'
-import type {MenuItem, MenuCategory} from '@/types/menu.types'
+import type { MenuCategory } from '@/types/menu.types'
+import { menuService } from '@/services/modules/menuService'
+import { queryKeys } from '@/constants/queryKeys'
 
 interface Feedback {
   id: number
@@ -16,163 +19,6 @@ interface Feedback {
   avatar?: string
   dishImage?: string
 }
-
-const mockDishes: MenuItem[] = [
-  {
-    id: '1',
-    name: 'Barbecue Sauce Ribs',
-    description: 'Slow-Grilled BBQ Ribs with authentic Italian taste',
-    price: 19.23,
-    imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80',
-    avgRating: 4.8,
-    categoryId: 'Main',
-    category: {
-      id: 'Main',
-      name: 'Main',
-      description: null,
-      imageUrl: null,
-      sortOrder: 1,
-      isActive: true,
-    },
-    isAvailable: true,
-    preparationTime: 20,
-    tags: ['24% OFF'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    name: 'Brief Pizza Margherita',
-    description: 'Cheesy Pizza with aromatic fresh thyme',
-    price: 15.50,
-    imageUrl: 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?auto=format&fit=crop&w=600&q=80',
-    avgRating: 4.9,
-    categoryId: 'Main',
-    category: {
-      id: 'Main',
-      name: 'Main',
-      description: null,
-      imageUrl: null,
-      sortOrder: 1,
-      isActive: true,
-    },
-    isAvailable: true,
-    preparationTime: 15,
-    tags: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-   id: '3',
-    name: 'Fresh Sea Foods Soup',
-    description: 'Fresh Sea Foods Soup with a spicy and refreshing taste',
-    price: 18.00,
-    imageUrl: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=600&q=80',
-    avgRating: 4.7,
-    categoryId: 'Appetizer',
-    category: {
-      id: 'Appetizer',
-      name: 'Appetizer',
-      description: null,
-      imageUrl: null,
-      sortOrder: 0,
-      isActive: true,
-    },
-    isAvailable: true,
-    preparationTime: 10,
-    tags: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-   id: '4',
-    name: 'Sashimi Salmon Fish',
-    description: 'Fresh Salmon Sashimi prepared in traditional Japanese style',
-    price: 22.00,
-    imageUrl: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=600&q=80',
-    avgRating: 4.9,
-    categoryId: 'Appetizer',
-    category: {
-      id: 'Appetizer',
-      name: 'Appetizer',
-      description: null,
-      imageUrl: null,
-      sortOrder: 0,
-      isActive: true,
-    },
-    isAvailable: true,
-    preparationTime: 10,
-    tags: ['Popular'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-   id: '5',
-    name: 'Chicken Creamy Pasta',
-    description: 'Cheesy Pasta with creamy chicken and mushrooms',
-    price: 16.80,
-    imageUrl: 'https://www.loveandoliveoil.com/wp-content/uploads/2023/01/garlic-chicken-pasta-7.jpg',
-    avgRating: 4.8,
-    categoryId: 'Main',
-    category: {
-      id: 'Main',
-      name: 'Main',
-      description: null,
-      imageUrl: null,
-      sortOrder: 1,
-      isActive: true,
-    },
-    isAvailable: true,
-    preparationTime: 15,
-    tags: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-   id: '6',
-    name: 'Valrhona Chocolate Dome',
-    description: 'Molten dark chocolate Cake with strawberry ream',
-    price: 12.00,
-    imageUrl: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=600&q=80',
-    avgRating: 4.7,
-    categoryId: 'Desert',
-    category: {
-      id: 'Desert',
-      name: 'Desert',
-      description: null,
-      imageUrl: null,
-      sortOrder: 2,
-      isActive: true,
-    },
-    isAvailable: true,
-    preparationTime: 12,
-    tags: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '7',
-    name: 'Tropical Cocktail Drink',
-    description: 'Cool tropical juice made from fresh fruits',
-    price: 8.50,
-    imageUrl: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80',
-    avgRating: 4.6,
-    categoryId: 'Drink',
-    category: {
-      id: 'Drink',
-      name: 'Drink',
-      description: null,
-      imageUrl: null,
-      sortOrder: 3,
-      isActive: true,
-    },
-    isAvailable: true,
-    preparationTime: 5,
-    tags: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
 
 const feedbacks: Feedback[] = [
   {
@@ -199,29 +45,52 @@ const feedbacks: Feedback[] = [
 
 export default function MenuPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const addItem = useCartStore((state) => state.addItem)
+  const cartItems = useCartStore((state) => state.items)
+  const { data: menuItems = [], isLoading: isMenuLoading, isError: menuError } = useQuery({
+    queryKey: queryKeys.menu.all(),
+    queryFn: menuService.getAll,
+  })
+  const { data: menuCategories = [], isLoading: isCategoriesLoading } = useQuery({
+    queryKey: queryKeys.menu.categories(),
+    queryFn: menuService.getCategories,
+  })
 
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
   const [maxPrice, setMaxPrice] = useState<number>(30)
   const [selectedTag, setSelectedTag] = useState<string>('')
+  const searchQuery = searchParams.get('search') ?? ''
 
-  const categories = ['All', 'Appetizer', 'Main', 'Desert', 'Drink']
+  const categories: (MenuCategory | 'All')[] = ['All', ...menuCategories.filter((category) => category.isActive)]
   const popularTags = ['Barbecue', 'Beef Burger', 'Beef Pizza', 'Sea Foods', 'Drinks']
 
   // Lọc danh sách món ăn
   const filteredDishes = useMemo(() => {
-    return mockDishes.filter((dish) => {
-      const matchCategory = selectedCategory === 'All' || dish.category.name === selectedCategory
+    return menuItems.filter((dish) => {
+      const matchCategory = selectedCategory === 'All' || dish.categoryId === selectedCategory
       const matchPrice = dish.price <= maxPrice
+      const matchSearch = !searchQuery.trim() || `${dish.name} ${dish.description ?? ''} ${dish.category.name}`
+        .toLocaleLowerCase()
+        .includes(searchQuery.trim().toLocaleLowerCase())
       const matchTag =
         !selectedTag ||
         dish.name.toLowerCase().includes(selectedTag.toLowerCase()) ||
         dish.category.name.toLowerCase().includes(selectedTag.toLowerCase())
-      return matchCategory && matchPrice && matchTag
+      return matchCategory && matchPrice && matchTag && matchSearch
     })
-  }, [selectedCategory, maxPrice, selectedTag])
+  }, [menuItems, selectedCategory, maxPrice, selectedTag, searchQuery])
 
-  const recommendations = mockDishes.slice(0, 3)
+  const cartCategoryIds = new Set(cartItems.map(({ menuItem }) => menuItem.categoryId))
+  const cartDishIds = new Set(cartItems.map(({ menuItem }) => menuItem.id))
+  const recommendations = menuItems
+    .filter((dish) => dish.isAvailable && !dish.isLowStock && !cartDishIds.has(dish.id))
+    .sort((a, b) => {
+      const aScore = (a.isRecommendable ? 2 : 0) + (cartCategoryIds.has(a.categoryId) ? 1 : 0)
+      const bScore = (b.isRecommendable ? 2 : 0) + (cartCategoryIds.has(b.categoryId) ? 1 : 0)
+      return bScore - aScore
+    })
+    .slice(0, 3)
 
   return (
     <div className="bg-[#fffaf2] min-h-screen text-stone-900">
@@ -238,7 +107,7 @@ export default function MenuPage() {
 
         {/* Nội dung chính */}
         <div className="relative z-10 mx-auto max-w-xl px-4">
-          <h1 className="font-serif text-4xl font-bold tracking-wide sm:text-5xl drop-shadow-md">
+          <h1 className="font-serif text-4xl !text-white   font-bold tracking-wide sm:text-5xl drop-shadow-md">
             Food Menu
           </h1>
           <p className="mt-3 text-sm font-medium text-orange-400 sm:text-base drop-shadow">
@@ -252,8 +121,10 @@ export default function MenuPage() {
         <div className="mb-12 rounded-3xl border border-orange-200 bg-orange-500/5 p-6 sm:p-8 backdrop-blur">
           <div className="flex items-center gap-2 mb-6">
             <Sparkles className="text-orange-500 fill-orange-500" size={22} />
-            <h2 className="text-xl font-bold text-stone-900 sm:text-2xl">Recommended Dishes for You</h2>
-            <span className="ml-2 rounded-full bg-orange-500 px-3 py-0.5 text-xs font-semibold text-white">AI Recommend</span>
+            <h2 className="text-xl font-bold text-stone-900 sm:text-2xl">{cartItems.length ? 'Add a pairing' : 'Recommended Dishes for You'}</h2>
+            <span className="ml-2 rounded-full bg-orange-500 px-3 py-0.5 text-xs font-semibold text-white">
+              {cartItems.length ? 'Pairs well with your cart' : 'Popular picks'}
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -272,7 +143,7 @@ export default function MenuPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        addItem(dish) 
+                        addItem(dish, 1)
                       }}
                       className="rounded-full bg-orange-500 p-1.5 text-white hover:bg-orange-600 active:scale-95 transition"
                     >
@@ -293,27 +164,49 @@ export default function MenuPage() {
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-stone-100">
               <h3 className="font-bold text-base text-stone-900 mb-4 border-b border-stone-100 pb-3">Danh Mục (Categories)</h3>
               <div className="space-y-1.5">
-                {categories.map((cat) => (
+                {categories.map((cat) => {
+                  const categoryId = cat === 'All' ? 'All' : cat.id
+                  const categoryName = cat === 'All' ? 'All' : cat.name
+                  const categoryCount = cat === 'All'
+                    ? menuItems.length
+                    : menuItems.filter((dish) => dish.categoryId === cat.id).length
+                  return (
                   <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
+                    key={categoryId}
+                    onClick={() => setSelectedCategory(categoryId)}
                     className={`flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
-                      selectedCategory === cat
+                      selectedCategory === categoryId
                         ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
                         : 'text-stone-600 hover:bg-orange-50 hover:text-orange-500'
                     }`}
                   >
-                    <span>{cat}</span>
+                    <span>{categoryName}</span>
                     <span className="text-xs opacity-75">
-                      ({cat === 'All' ? mockDishes.length : mockDishes.filter((d) => d.category.name === cat).length})
+                      ({categoryCount})
                     </span>
                   </button>
-                ))}
+                  )
+                })}
               </div>
             </div>
 
             {/* PRICE FILTER */}
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-stone-100">
+              <input
+                type="search"
+                aria-label="Search menu"
+                value={searchQuery}
+                onChange={(event) => {
+                  const value = event.target.value
+                  setSearchParams((current) => {
+                    if (value.trim()) current.set('search', value)
+                    else current.delete('search')
+                    return current
+                  }, { replace: true })
+                }}
+                placeholder="Search dishes"
+                className="mb-5 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none focus:border-orange-500"
+              />
               <h3 className="font-bold text-base text-stone-900 mb-4 border-b border-stone-100 pb-3 flex items-center gap-2">
                 <SlidersHorizontal size={16} className="text-orange-500" />
                 Price Filter
@@ -375,7 +268,11 @@ export default function MenuPage() {
 
           {/* RIGHT DISHES GRID */}
           <div className="lg:col-span-3">
-            {filteredDishes.length === 0 ? (
+            {isMenuLoading || isCategoriesLoading ? (
+              <div className="rounded-2xl bg-white p-12 text-center text-stone-500">Loading menu…</div>
+            ) : menuError ? (
+              <div className="rounded-2xl bg-white p-12 text-center text-red-600">Unable to load the menu. Please try again later.</div>
+            ) : filteredDishes.length === 0 ? (
               <div className="rounded-2xl bg-white p-12 text-center text-stone-500">
                 No dishes match your selected filters.
               </div>
@@ -394,11 +291,11 @@ export default function MenuPage() {
                         alt={dish.name}
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                       />
-                      {dish.tags && (
+                      {dish.tags?.length ? (
                         <span className="absolute left-3 top-3 rounded-md bg-orange-500 px-2.5 py-1 text-xs font-bold text-white shadow-md">
-                          {dish.tags[0]}
+                          {dish.tags[0] }
                         </span>
-                      )}
+                      ): null} 
                     </div>
 
                     {/* Thông tin món ăn */}
@@ -407,31 +304,18 @@ export default function MenuPage() {
                         {dish.name}
                       </h3>
                       <p className="mt-1 text-xs text-stone-500 line-clamp-2">{dish.description}</p>
-
-                      <div className="mt-2.5 flex items-center gap-1.5">
-                        <div className="flex text-amber-400">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              size={14}
-                              fill={i < Math.floor(dish.avgRating || 0) ? 'currentColor' : 'none'}
-                              className={i < Math.floor(dish.avgRating || 0) ? 'text-amber-400' : 'text-stone-300'}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-xs font-bold text-stone-600">({dish.avgRating?.toFixed(1)})</span>
-                      </div>
                     </div>
 
                     {/* Phần Giá & Giỏ hàng */}
                     <div className="px-4 pb-3 pt-2 flex items-center justify-between border-t border-stone-100 mt-2">
                       <span className="text-xl font-bold text-orange-500">${dish.price.toFixed(2)}</span>
-                      <button
+                        <button
+                          disabled={!dish.isAvailable || dish.isLowStock}
                         onClick={(e) => {
                           e.stopPropagation()
-                          addItem(dish)
+                          addItem(dish, 1)
                         }}
-                        className="grid h-10 w-10 place-items-center rounded-full bg-orange-500 text-white shadow-md hover:bg-orange-600 active:scale-95 transition"
+                          className="grid h-10 w-10 place-items-center rounded-full bg-orange-500 text-white shadow-md hover:bg-orange-600 active:scale-95 transition disabled:cursor-not-allowed disabled:bg-stone-300"
                         title="Add to Cart"
                       >
                         <ShoppingCart size={18} />

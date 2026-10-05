@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { KitchenGateway } from './kitchen.gateway';
 
-@Module({})
+@Module({
+  providers: [KitchenGateway],
+  exports: [KitchenGateway],
+})
 export class GatewaysModule {}

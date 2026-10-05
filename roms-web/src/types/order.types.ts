@@ -2,7 +2,7 @@ import type { MenuItem } from './menu.types'
 import type { Table } from './table.types'
 import type { User } from './user.types'
 
-export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'COOKING' | 'READY' | 'SERVED' | 'PAID' | 'CANCELLED'
+export type OrderStatus = 'CREATED' | 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COOKING' | 'READY' | 'SERVED' | 'COMPLETED' | 'PAID' | 'CANCELLED'
 export type OrderItemStatus = 'PENDING' | 'CONFIRMED' | 'COOKING' | 'READY' | 'SERVED' | 'REJECTED' | 'CANCELLED'
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'E_WALLET'
 
@@ -21,6 +21,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string
+  orderCode?: string
   tableId: string
   table: Table
   customerId: string | null
@@ -68,12 +69,27 @@ export interface ProcessPaymentPayload {
 export interface KitchenOrderItem {
   id: string
   orderId: string
+  orderCode: string
   tableId: string
   tableName: string
+  waiterName: string
+  menuItemId: string
   menuItemName: string
+  categoryName: string
   quantity: number
   note: string | null
   status: OrderItemStatus
+  rejectionReason?: string | null
   isPriority: boolean
+  isAvailable: boolean
   createdAt: string
+  recipes?: {
+    id: string
+    inventoryItemId: string
+    itemName: string
+    unit: string
+    quantityRequired: number
+    currentStock: number
+    minAlertThreshold: number
+  }[]
 }
