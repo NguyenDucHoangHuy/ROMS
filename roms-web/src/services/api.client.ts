@@ -42,7 +42,20 @@ function processQueue(error: unknown, token: string | null = null) {
 }
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // NestJS wraps successful responses as { success, statusCode, message, data, ... }.
+    // Keep service callers working with the actual payload (arrays, objects, etc.).
+    const body: unknown = response.data
+    if (
+      body !== null &&
+      typeof body === 'object' &&
+      'success' in body &&
+      'data' in body
+    ) {
+      response.data = body.data
+    }
+    return response
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean
