@@ -32,6 +32,15 @@ export const queryKeys = {
     pendingPayment: () => ['orders', 'pending-payment'] as const,
   },
 
+  cashier: {
+    tables: () => ['cashier', 'tables'] as const,
+    menu: () => ['cashier', 'menu'] as const,
+    tableOrder: (tableId: string) => ['cashier', 'tables', tableId, 'order'] as const,
+    transactions: () => ['cashier', 'transactions'] as const,
+    transactionPage: (params: Record<string, unknown>) =>
+      ['cashier', 'transactions', params] as const,
+  },
+
   // Reservations
   reservations: {
     all: () => ['reservations'] as const,
@@ -56,7 +65,8 @@ export const queryKeys = {
 
   // Analytics
   analytics: {
-    revenue: (params: Record<string, unknown>) => ['analytics', 'revenue', params] as const,
+    revenue: (params: Record<string, unknown> = {}) => ['analytics', 'revenue', params] as const,
+    endOfDay: (date: string) => ['analytics', 'end-of-day', date] as const,
     topItems: () => ['analytics', 'top-items'] as const,
     forecast: () => ['analytics', 'forecast'] as const,
   },
@@ -64,5 +74,6 @@ export const queryKeys = {
   // Audit Logs
   auditLogs: {
     all: (params?: Record<string, unknown>) => ['audit-logs', params] as const,
+    cashier: (params?: Record<string, unknown>) => ['cashier', 'audit-logs', params] as const,
   },
 } as const

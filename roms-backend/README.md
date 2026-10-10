@@ -45,6 +45,50 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## Cashier UI demo without login
+
+This opt-in demo mode exposes only explicitly marked Cashier API operations. Enable it separately in the local backend and frontend environments, then restart both applications:
+
+```env
+NODE_ENV=development
+CASHIER_DEMO_AUTH_BYPASS=true
+CASHIER_DEMO_CASHIER_ID=<existing active cashier account UUID>
+CASHIER_DEMO_REFUND_APPROVER_ID=<existing active manager/admin with REFUND_APPROVE UUID>
+```
+
+In `roms-web/.env.local`, set:
+
+```env
+VITE_CASHIER_DEMO_AUTH_BYPASS=true
+```
+
+Both flags default to off. The backend rejects startup if `CASHIER_DEMO_AUTH_BYPASS=true` unless `NODE_ENV=development`. The frontend bypass applies only to Cashier routes when running Vite in development mode. When enabled, these database-backed endpoints do not require a token:
+
+- `GET /api/v1/cashier/tables`
+- `GET /api/v1/cashier/menu`
+- `GET /api/v1/cashier/tables/:tableId/order`
+- `GET /api/v1/cashier/transactions`
+- `GET /api/v1/cashier/revenue`
+- `GET /api/v1/cashier/audit-logs`
+- `GET /api/v1/cashier/end-of-day`
+- `GET /api/v1/cashier/shifts/current` (reads the configured demo cashier's shift)
+- `POST /api/v1/cashier/orders`
+- `POST /api/v1/cashier/bills/validate-promotion`
+- `POST /api/v1/cashier/sessions/:sessionId/bill`
+- `POST /api/v1/cashier/payments`
+- `POST /api/v1/cashier/bills/:billId/split`
+- `POST /api/v1/cashier/tables/merge`
+- `POST /api/v1/cashier/tables/:tableId/mark-clean`
+- `POST /api/v1/cashier/payments/:paymentId/refund`
+
+Demo writes use only the backend-configured local account IDs; client-provided identities are ignored. The cashier ID must resolve to an active cashier, manager, or admin account. The refund approver must be active and have the `REFUND_APPROVE` permission. Keep these values in the ignored local `.env` file; never copy them into production configuration. Missing or invalid IDs reject the relevant operation. No authenticated `request.user` or JWT is created.
+
+Demo operations modify the actual local PostgreSQL records and audit history. Cashier payment methods are recorded locally; this API does not perform card, e-wallet, or QR-provider settlement. Refunds create local refund records and do not send funds back to a provider. Review bill/table state before trying a workflow; successful payments close bills and may move tables into cleaning.
+
+User-specific shift endpoints and all unlisted mutations continue to require normal JWT authentication and role checks. The separate `/api/v1/reports` endpoints require JWT authentication; Cashier screens use the explicitly scoped `/api/v1/cashier` report routes listed above.
+
+Start the backend from `roms-backend` with `npm run start:dev`, and the frontend from `roms-web` with `npm run dev`. Do not enable the backend flag outside local development.
+
 ## Run tests
 
 ```bash

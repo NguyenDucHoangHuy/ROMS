@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import CashierSidebar from "@/components/cashier/CashierSidebar";
 import { useCashierLocale } from "@/contexts/CashierLocaleContext";
+import { reportsService } from "@/services/modules/reportsService";
 import {
   Bell,
   Banknote,
@@ -77,18 +79,18 @@ interface PasswordFormData {
 ========================================================= */
 
 const initialCashierProfile: CashierProfile = {
-  id: "NV-082",
-  fullName: "Nguyễn Thu Ngân",
-  role: "Thu ngân chính",
-  email: "nguyen.thungan@bistropos.vn",
-  phone: "+84 90 123 4567",
-  branch: "Quận 1, TP. Hồ Chí Minh",
-  avatarUrl: "https://i.pravatar.cc/160?img=47",
+  id: "",
+  fullName: "",
+  role: "",
+  email: "",
+  phone: "",
+  branch: "",
+  avatarUrl: "",
   currentShift: {
-    name: "Ca Sáng",
-    startTime: "06:00",
-    endTime: "14:00",
-    status: "active",
+    name: "",
+    startTime: "",
+    endTime: "",
+    status: "inactive",
   },
 };
 
@@ -197,7 +199,7 @@ const translations = {
     passwordUpdated: "Mật khẩu đã được cập nhật.",
     updatePassword: "Cập nhật mật khẩu",
 
-    noNotifications: "Bạn không có thông báo mới.",
+    noNotifications: "Backend chưa cung cấp API thông báo.",
     splitBillMessage:
       "Chức năng Tách hóa đơn đã được mở.",
     quickCashMessage:
@@ -275,7 +277,7 @@ const translations = {
     updatePassword: "Update Password",
 
     noNotifications:
-      "You have no new notifications.",
+      "The backend does not provide a notifications API.",
     splitBillMessage:
       "Split Bill has been opened.",
     quickCashMessage:
@@ -537,8 +539,14 @@ function ModalBackdrop({
 export default function CashierProfileSettings() {
   const navigate = useNavigate();
   const { language, setLanguage, isEnglish } = useCashierLocale();
+  const shiftQuery = useQuery({
+    queryKey: ["cashier", "current-shift"],
+    queryFn: reportsService.getCurrentShift,
+    staleTime: 30_000,
+  });
+  const currentShift = shiftQuery.data;
 
-  const [profile, setProfile] = useState<CashierProfile>(
+  const [profile] = useState<CashierProfile>(
     initialCashierProfile
   );
 
@@ -658,18 +666,10 @@ export default function CashierProfileSettings() {
       return;
     }
 
-    setProfile((previous) => ({
-      ...previous,
-      fullName: profileForm.fullName.trim(),
-      email: profileForm.email.trim(),
-      phone: profileForm.phone.trim(),
-      branch: profileForm.branch.trim(),
-    }));
-
-    setIsProfileModalOpen(false);
-    setProfileError("");
-
-    showToast(t.profileUpdated);
+    setProfileError(isEnglish
+      ? "Profile updates are unavailable because the backend has no profile update endpoint."
+      : "Chưa thể cập nhật hồ sơ vì backend chưa có API cập nhật hồ sơ.");
+    showToast(isEnglish ? "Profile update API is unavailable." : "API cập nhật hồ sơ chưa khả dụng.");
   };
 
   /* =======================================================
@@ -734,15 +734,13 @@ export default function CashierProfileSettings() {
       return;
     }
 
-    setIsPasswordModalOpen(false);
-
-    setPasswordForm({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
-
-    showToast(t.passwordUpdated);
+    setPasswordErrors((current) => ({
+      ...current,
+      newPassword: isEnglish
+        ? "Password changes are unavailable because the backend has no password update endpoint."
+        : "Chưa thể đổi mật khẩu vì backend chưa có API cập nhật mật khẩu.",
+    }));
+    showToast(isEnglish ? "Password update API is unavailable." : "API đổi mật khẩu chưa khả dụng.");
   };
 
   /* =======================================================
@@ -1113,11 +1111,20 @@ export default function CashierProfileSettings() {
                       <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]" />
 
                       <span>
-                        {isEnglish
-                          ? `${t.morningShift} (${profile.currentShift.startTime} - ${profile.currentShift.endTime})`
-                          : `${profile.currentShift.name} (${profile.currentShift.startTime} - ${profile.currentShift.endTime})`}
+                        {shiftQuery.isLoading
+                          ? (isEnglish ? "Loading shift…" : "Đang tải ca làm…")
+                          : shiftQuery.isError
+                            ? (isEnglish ? "Shift unavailable" : "Không tải được ca làm")
+                            : currentShift?.hasShift
+                              ? `${currentShift.shiftName ?? t.currentShift} (${currentShift.startTime ?? "--:--"} - ${currentShift.endTime ?? "--:--"})`
+                              : (isEnglish ? "No active shift" : "Không có ca đang hoạt động")}
                       </span>
                     </div>
+                    {shiftQuery.isError && (
+                      <button type="button" onClick={() => void shiftQuery.refetch()} className="mt-2 text-xs font-bold text-orange-700 underline">
+                        {isEnglish ? "Retry" : "Thử lại"}
+                      </button>
+                    )}
                   </InfoField>
                 </div>
               </section>

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -15,9 +16,13 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { HrModule } from './modules/hr/hr.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
+import { CashierModule } from './modules/cashier/cashier.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { validateEnvironment } from './config/env.validation';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     PrismaModule,
     GatewaysModule,
     AuthModule,
@@ -32,6 +37,8 @@ import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
     BillingModule,
     HrModule,
     AuditLogsModule,
+    CashierModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

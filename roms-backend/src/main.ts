@@ -12,11 +12,17 @@ async function bootstrap() {
   // 1. Cấu hình Prefix API toàn hệ thống (/api/v1/...)
   app.setGlobalPrefix('api/v1');
 
-  // 2. Bật CORS cho phép Web (5173) và Mobile truy cập
+  const allowedOrigins = (
+    process.env.CORS_ORIGINS ?? 'http://localhost:5173,http://127.0.0.1:5173'
+  )
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: '*',
+    origin: allowedOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
+    credentials: false,
   });
 
   // 3. Cấu hình Global Validation Pipe

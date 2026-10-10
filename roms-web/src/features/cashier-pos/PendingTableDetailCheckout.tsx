@@ -1,6 +1,10 @@
 import React, { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { queryKeys } from "@/constants/queryKeys";
+import { cashierService } from "@/services/modules/cashierService";
 import CashierSidebar from "@/components/cashier/CashierSidebar";
+import { CASHIER_DEV_READ_ONLY } from "./cashierPreviewMode";
 import {
   ArrowLeft,
   Bell,
@@ -19,6 +23,7 @@ import {
   RotateCcw,
   Search,
   Settings,
+  Smartphone,
   ShoppingBag,
   Split,
   Users,
@@ -57,7 +62,9 @@ export interface PendingTableOrder {
   floor: string;
   elapsed: string;
   total: number;
+  unpaidBill?: { id: string; billCode: string; finalAmount: number; status: string; promotionCode?: string | null };
   type: "table" | "takeaway";
+  tableId: string;
   order: OrderDetail;
 }
 
@@ -85,189 +92,6 @@ const formatShortVND = (value: number) => {
 
   return `${Math.round(value / 1_000)}K`;
 };
-
-const currentTableItems: TableItem[] = [
-  {
-    id: "current-1",
-    name: "Special Beef Pho",
-    quantity: 2,
-    unitPrice: 150_000,
-  },
-  {
-    id: "current-2",
-    name: "Fried Spring Rolls",
-    quantity: 1,
-    unitPrice: 85_000,
-  },
-  {
-    id: "current-3",
-    name: "Vietnamese Iced Coffee",
-    quantity: 2,
-    unitPrice: 70_000,
-  },
-  {
-    id: "current-4",
-    name: "Iced Tea",
-    quantity: 2,
-    unitPrice: 10_000,
-  },
-];
-
-const pendingOrders: PendingTableOrder[] = [
-  {
-    id: "28485",
-    tableName: "Table 08",
-    floor: "Floor 1",
-    elapsed: "5 minutes ago",
-    total: 850_000,
-    type: "table",
-    order: {
-      id: "28485",
-      tableName: "Table 08",
-      floor: "Floor 1",
-      customerCount: 4,
-      time: "12:10",
-      status: "pending",
-      items: [
-        {
-          id: "28485-1",
-          name: "Large Seafood Thai Hot Pot",
-          quantity: 1,
-          unitPrice: 450_000,
-        },
-        {
-          id: "28485-2",
-          name: "Lotus Stem Salad with Shrimp & Pork",
-          quantity: 1,
-          unitPrice: 180_000,
-        },
-        {
-          id: "28485-3",
-          name: "Heineken Beer",
-          quantity: 6,
-          unitPrice: 25_000,
-        },
-        {
-          id: "28485-4",
-          name: "Cold Towel",
-          quantity: 4,
-          unitPrice: 5_000,
-        },
-      ],
-      subtotal: 800_000,
-      vat: 50_000,
-      vatRate: 10,
-      total: 850_000,
-    },
-  },
-  {
-    id: "28486",
-    tableName: "Table 12",
-    floor: "Floor 2",
-    elapsed: "2 minutes ago",
-    total: 1_240_000,
-    type: "table",
-    order: {
-      id: "28486",
-      tableName: "Table 12",
-      floor: "Floor 2",
-      customerCount: 6,
-      time: "12:13",
-      status: "pending",
-      items: [
-        {
-          id: "28486-1",
-          name: "Large Seafood Thai Hot Pot",
-          quantity: 2,
-          unitPrice: 450_000,
-        },
-        {
-          id: "28486-2",
-          name: "Lotus Stem Salad with Shrimp & Pork",
-          quantity: 1,
-          unitPrice: 180_000,
-        },
-        {
-          id: "28486-3",
-          name: "Heineken Beer",
-          quantity: 8,
-          unitPrice: 25_000,
-        },
-        {
-          id: "28486-4",
-          name: "Cold Towel",
-          quantity: 4,
-          unitPrice: 5_000,
-        },
-      ],
-      subtotal: 1_000_000,
-      vat: 240_000,
-      vatRate: 24,
-      total: 1_240_000,
-    },
-  },
-  {
-    id: "28487",
-    tableName: "Takeaway #45",
-    floor: "Waiting Area",
-    elapsed: "Just now",
-    total: 120_000,
-    type: "takeaway",
-    order: {
-      id: "28487",
-      tableName: "Takeaway #45",
-      floor: "Waiting Area",
-      customerCount: 1,
-      time: "12:15",
-      status: "pending",
-      items: [
-        {
-          id: "28487-1",
-          name: "Fried Fish Sauce Chicken Rice",
-          quantity: 1,
-          unitPrice: 75_000,
-        },
-        {
-          id: "28487-2",
-          name: "Vietnamese Iced Coffee",
-          quantity: 1,
-          unitPrice: 45_000,
-        },
-      ],
-      subtotal: 120_000,
-      vat: 0,
-      vatRate: 0,
-      total: 120_000,
-    },
-  },
-];
-
-const transactions: TransactionHistory[] = [
-  {
-    id: "28490",
-    tableName: "Table 02",
-    paymentMethod: "Credit Card",
-    time: "12:45",
-    amount: 540_000,
-    status: "completed",
-  },
-  {
-    id: "28489",
-    tableName: "Table 05",
-    paymentMethod: "Cash",
-    time: "12:30",
-    amount: 210_000,
-    status: "completed",
-  },
-  {
-    id: "28488",
-    tableName: "Takeaway",
-    paymentMethod: "Momo QR",
-    time: "12:15",
-    amount: 85_000,
-    status: "completed",
-  },
-];
 
 /* =========================================================
  * Sidebar
@@ -321,41 +145,106 @@ const SidebarItem = ({
  * ======================================================= */
 
 const CashierCheckoutDashboard: React.FC = () => {
-    const navigate = useNavigate();
-
-  const [selectedOrderId, setSelectedOrderId] = useState("28485");
-  const [coupon, setCoupon] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState(false);
-  const [activeNav, setActiveNav] = useState("Sales");
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const tablesQuery = useQuery({ queryKey: queryKeys.cashier.tables(), queryFn: cashierService.getTables });
+  const transactionsQuery = useQuery({
+    queryKey: ['cashier', 'transactions', 1, 5],
+    queryFn: () => cashierService.getTransactions({ page: 1, limit: 5 }),
+  });
+  const [selectedOrderId, setSelectedOrderId] = useState('');
+  const [coupon, setCoupon] = useState('');
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [activeNav, setActiveNav] = useState('Sales');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const handleRefresh = () => {
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK_TRANSFER' | 'MOMO' | 'VNPAY'>('CASH');
+  const [actionError, setActionError] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const tableData = useMemo(() => tablesQuery.data ?? [], [tablesQuery.data]);
+  const pendingOrders = useMemo<PendingTableOrder[]>(() => tableData
+    .filter((table) => table.status === 'occupied' && table.orderItems?.length)
+    .map((table) => {
+      const items = (table.orderItems ?? []).map((item) => ({
+        id: item.id, name: item.name, quantity: item.quantity, unitPrice: item.price,
+      }));
+      const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+      return {
+        id: table.id, tableName: table.name, floor: `Floor ${table.floor}`,
+        elapsed: table.timer ?? '', total: table.unpaidBill?.finalAmount ?? table.total,
+        unpaidBill: table.unpaidBill, type: 'table' as const, tableId: table.id,
+        order: {
+          id: table.orderId ?? table.id, tableName: table.name, floor: `Floor ${table.floor}`,
+          customerCount: table.guests, time: table.timer ?? '', status: 'pending' as const,
+          items, subtotal, vat: 0, vatRate: 0, total: table.total,
+        },
+      };
+    }), [tableData]);
+  const selectedPendingOrder = pendingOrders.find((item) => item.id === selectedOrderId) ?? pendingOrders[0];
+  const selectedOrder = selectedPendingOrder?.order ?? {
+    id: '', tableName: '', floor: '', customerCount: 0, time: '', status: 'pending' as const,
+    items: [], subtotal: 0, vat: 0, vatRate: 0, total: 0,
+  };
+  const currentSubtotal = selectedOrder.subtotal;
+  const currentTotal = selectedPendingOrder?.unpaidBill?.finalAmount
+    ?? Math.max(0, currentSubtotal - discountAmount);
+  const currentTableItems = selectedOrder.items;
+  const transactions = transactionsQuery.data?.data ?? [];
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    window.setTimeout(() => setIsRefreshing(false), 700);
+    await Promise.all([tablesQuery.refetch(), transactionsQuery.refetch()]);
+    setIsRefreshing(false);
   };
-
-  const selectedPendingOrder = useMemo(() => {
-    return (
-      pendingOrders.find((item) => item.id === selectedOrderId) ??
-      pendingOrders[0]
-    );
-  }, [selectedOrderId]);
-
-  const currentSubtotal = 315_000;
-  const currentVat = 25_200;
-  const currentTotal = 340_200;
-
-  const selectedOrder = selectedPendingOrder.order;
-
-  const applyCoupon = () => {
-    if (!coupon.trim()) return;
-    setAppliedCoupon(true);
+  const applyCoupon = async () => {
+    if (!coupon.trim() || !selectedOrder.subtotal) return;
+    try {
+      const result = await cashierService.validatePromotion({ code: coupon.trim(), subtotal: selectedOrder.subtotal });
+      setDiscountAmount(result.discountAmount);
+      setActionError('');
+    } catch (error) {
+      setDiscountAmount(0);
+      setActionError(error instanceof Error ? error.message : 'Promotion validation failed.');
+    }
   };
-
-  const handlePayment = () => {
-    setShowPaymentModal(true);
+  const handlePayment = async () => {
+    if (isProcessingPayment) return;
+    if (CASHIER_DEV_READ_ONLY) {
+      setActionError("Payment is disabled in development read-only preview mode.");
+      return;
+    }
+    if (!selectedPendingOrder) return;
+    setIsProcessingPayment(true);
+    try {
+      const tableOrder = await cashierService.getTableOrder(selectedPendingOrder.tableId);
+      const sessionId = tableOrder.diningSession?.id;
+      if (!sessionId) throw new Error('This table has no active session.');
+      const existingBill = tableOrder.bills.find((candidate) => candidate.status === 'UNPAID');
+      const requestedPromotion = coupon.trim().toUpperCase();
+      if (
+        existingBill &&
+        requestedPromotion &&
+        existingBill.promotionCode?.toUpperCase() !== requestedPromotion
+      ) {
+        throw new Error('An unpaid bill already exists with a different promotion. Remove the code to pay that bill.');
+      }
+      const bill = existingBill
+        ?? await cashierService.createBill(sessionId, { promotionCode: requestedPromotion || undefined });
+      await cashierService.createPayment({ billId: bill.id, paymentMethod, amountPaid: bill.finalAmount });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.cashier.tables() }),
+        queryClient.invalidateQueries({ queryKey: ['cashier', 'transactions'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.revenue() }),
+        queryClient.invalidateQueries({ queryKey: ['analytics', 'end-of-day'] }),
+        queryClient.invalidateQueries({ queryKey: ['cashier', 'audit-logs'] }),
+      ]);
+      setShowPaymentModal(false);
+      setActionError('');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Payment could not be completed.');
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
   return (
@@ -574,7 +463,7 @@ const CashierCheckoutDashboard: React.FC = () => {
 
                     <div>
                       <p className="text-sm font-bold text-slate-800">
-                        3 tables are waiting for payment
+                        {pendingOrders.length} tables are waiting for payment
                       </p>
 
                       <p className="mt-1 text-xs text-slate-500">
@@ -593,6 +482,16 @@ const CashierCheckoutDashboard: React.FC = () => {
            * ================================================= */}
 
           <main className="min-h-0 flex-1 p-5">
+            {(tablesQuery.isError || transactionsQuery.isError || actionError) && (
+              <div role="alert" className="mb-3 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                <span>{actionError || (tablesQuery.isError ? "Could not load tables from the cashier API." : "Could not load recent transactions.")}</span>
+                <button type="button" onClick={() => void handleRefresh()} className="underline">Retry</button>
+              </div>
+            )}
+            {!tablesQuery.isError && tablesQuery.isLoading && <p className="mb-3 text-sm text-slate-500">Loading tables and orders…</p>}
+            {!tablesQuery.isLoading && !tablesQuery.isError && pendingOrders.length === 0 && (
+              <div className="mb-3 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">No open table orders are waiting for payment.</div>
+            )}
             <div className="grid h-full min-h-0 grid-cols-[minmax(320px,0.85fr)_minmax(600px,1.75fr)_minmax(285px,0.85fr)] gap-5">
               {/* =================================================
                * COLUMN 1 - CURRENT CHECKOUT
@@ -605,7 +504,7 @@ const CashierCheckoutDashboard: React.FC = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <h2 className="text-[20px] font-extrabold text-slate-900">
-                          Table 14
+                          {selectedOrder.tableName || "No table selected"}
                         </h2>
 
                         <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-600">
@@ -614,12 +513,13 @@ const CashierCheckoutDashboard: React.FC = () => {
                       </div>
 
                       <p className="mt-1 text-xs font-medium text-slate-400">
-                        Invoice #28491 • 2 Guests
+                        Invoice #{selectedOrder.id || "—"} • {selectedOrder.customerCount} Guests
                       </p>
                     </div>
 
                     <button
                       type="button"
+                      onClick={() => navigate("/cashier/split-bill?tableId=" + (selectedPendingOrder?.tableId ?? ""))}
                       className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                     >
                       <MoreHorizontal size={19} />
@@ -677,22 +577,12 @@ const CashierCheckoutDashboard: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-slate-500">
-                        VAT (8%)
-                      </span>
-
-                      <span className="font-bold text-slate-700">
-                        {formatVND(currentVat)}
-                      </span>
-                    </div>
-
                     <div className="flex h-10 overflow-hidden rounded-lg border border-slate-200 bg-white">
                       <input
                         value={coupon}
                         onChange={(event) => {
                           setCoupon(event.target.value);
-                          setAppliedCoupon(false);
+                          setDiscountAmount(0);
                         }}
                         placeholder="Discount code..."
                         className="min-w-0 flex-1 px-3 text-xs font-medium outline-none placeholder:text-slate-400"
@@ -707,7 +597,7 @@ const CashierCheckoutDashboard: React.FC = () => {
                       </button>
                     </div>
 
-                    {appliedCoupon && (
+                    {discountAmount > 0 && (
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
                         <CheckCircle2 size={13} />
                         Discount code applied successfully
@@ -730,6 +620,7 @@ const CashierCheckoutDashboard: React.FC = () => {
                   <div className="mt-4 grid grid-cols-2 gap-2.5">
                     <button
                       type="button"
+                      onClick={() => navigate("/cashier/merge-bill")}
                       className="flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
                     >
                       <Split size={17} />
@@ -784,7 +675,7 @@ const CashierCheckoutDashboard: React.FC = () => {
                     </p>
 
                     <p className="mt-0.5 text-[30px] font-black tracking-tight text-orange-600">
-                      {formatVND(selectedOrder.total)}
+                      {formatVND(currentTotal)}
                     </p>
                   </div>
                 </div>
@@ -847,23 +738,13 @@ const CashierCheckoutDashboard: React.FC = () => {
                         </span>
                       </div>
 
-                      <div className="mb-3 flex items-center justify-between text-sm">
-                        <span className="font-medium text-slate-500">
-                          VAT ({selectedOrder.vatRate}%)
-                        </span>
-
-                        <span className="font-bold text-slate-700">
-                          {formatVND(selectedOrder.vat)}
-                        </span>
-                      </div>
-
                       <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-3">
                         <span className="text-lg font-extrabold text-slate-900">
                           Total
                         </span>
 
                         <span className="text-[23px] font-black text-orange-600">
-                          {formatVND(selectedOrder.total)}
+                          {formatVND(currentTotal)}
                         </span>
                       </div>
                     </div>
@@ -871,7 +752,8 @@ const CashierCheckoutDashboard: React.FC = () => {
                     <div className="w-[390px]">
                       <button
                         type="button"
-                        onClick={handlePayment}
+                        onClick={() => setShowPaymentModal(true)}
+                        disabled={CASHIER_DEV_READ_ONLY || isProcessingPayment || !selectedPendingOrder}
                         className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-orange-600 px-5 text-[16px] font-extrabold text-white shadow-lg shadow-orange-200 transition hover:bg-orange-700 active:scale-[0.99]"
                       >
                         <CreditCard size={20} strokeWidth={2.5} />
@@ -926,7 +808,7 @@ const CashierCheckoutDashboard: React.FC = () => {
                   <div className="min-h-0 flex-1 overflow-auto p-3">
                     <div className="space-y-2">
                       {pendingOrders.map((pending) => {
-                        const selected = pending.id === selectedOrderId;
+                        const selected = pending.id === (selectedPendingOrder?.id ?? "");
 
                         return (
                           <button
@@ -1100,15 +982,16 @@ const CashierCheckoutDashboard: React.FC = () => {
               </p>
 
               <p className="mt-1 text-[36px] font-black tracking-tight text-orange-600">
-                {formatVND(selectedOrder.total)}
+                {formatVND(currentTotal)}
               </p>
             </div>
 
             {/* Payment Methods */}
-            <div className="grid grid-cols-3 gap-3 px-6 py-6">
+            <div className="grid grid-cols-4 gap-3 px-6 py-6">
               <button
                 type="button"
-                className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl border-2 border-orange-500 bg-orange-50 text-orange-700"
+                onClick={() => setPaymentMethod("CASH")}
+                className={`flex h-24 flex-col items-center justify-center gap-2 rounded-xl border-2 ${paymentMethod === "CASH" ? "border-orange-500 bg-orange-50 text-orange-700" : "border-slate-200 text-slate-600"}`}
               >
                 <WalletCards size={24} />
 
@@ -1117,18 +1000,30 @@ const CashierCheckoutDashboard: React.FC = () => {
 
               <button
                 type="button"
-                className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                onClick={() => setPaymentMethod("BANK_TRANSFER")}
+                className={`flex h-24 flex-col items-center justify-center gap-2 rounded-xl border ${paymentMethod === "BANK_TRANSFER" ? "border-orange-500 bg-orange-50 text-orange-700" : "border-slate-200 text-slate-600"} transition hover:border-slate-300 hover:bg-slate-50`}
               >
                 <CreditCard size={24} />
 
                 <span className="text-xs font-extrabold">
-                  Card
+                  Bank Transfer
                 </span>
               </button>
 
               <button
                 type="button"
-                className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                onClick={() => setPaymentMethod("MOMO")}
+                className={`flex h-24 flex-col items-center justify-center gap-2 rounded-xl border ${paymentMethod === "MOMO" ? "border-orange-500 bg-orange-50 text-orange-700" : "border-slate-200 text-slate-600"} transition hover:border-slate-300 hover:bg-slate-50`}
+              >
+                <Smartphone size={24} />
+
+                <span className="text-xs font-extrabold">MoMo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("VNPAY")}
+                className={`flex h-24 flex-col items-center justify-center gap-2 rounded-xl border ${paymentMethod === "VNPAY" ? "border-orange-500 bg-orange-50 text-orange-700" : "border-slate-200 text-slate-600"} transition hover:border-slate-300 hover:bg-slate-50`}
               >
                 <Receipt size={24} />
 
@@ -1150,10 +1045,11 @@ const CashierCheckoutDashboard: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => setShowPaymentModal(false)}
-                className="h-12 flex-[1.5] rounded-xl bg-orange-600 text-sm font-extrabold text-white shadow-md shadow-orange-200 transition hover:bg-orange-700"
+                onClick={() => void handlePayment()}
+                disabled={CASHIER_DEV_READ_ONLY || isProcessingPayment || !selectedPendingOrder}
+                className="h-12 flex-[1.5] rounded-xl bg-orange-600 text-sm font-extrabold text-white shadow-md shadow-orange-200 transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Confirm Payment
+                {isProcessingPayment ? "Processing…" : "Confirm Payment"}
               </button>
             </div>
           </div>

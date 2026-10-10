@@ -89,7 +89,9 @@ export default function LoginPage() {
               Welcome to ROMS
             </h1>
             <p className="text-stone-400 text-sm mt-2">
-              Please enter your details.
+            {import.meta.env.DEV
+              ? 'Use the development preview button below to open Cashier without logging in.'
+              : 'Please enter your details.'}
             </p>
           </div>
 
@@ -167,6 +169,15 @@ export default function LoginPage() {
               </button>
             </div>
           </form>
+          {import.meta.env.DEV && (
+            <button
+              type="button"
+              onClick={() => navigate('/cashier')}
+              className="mt-4 w-full rounded-full border border-orange-200 bg-orange-50 px-6 py-3 text-sm font-bold text-orange-700 transition hover:bg-orange-100"
+            >
+              Open Cashier POS without login
+            </button>
+          )}
         </div>
       </div>
     </div>

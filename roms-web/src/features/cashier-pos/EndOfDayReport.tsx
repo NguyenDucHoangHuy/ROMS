@@ -1,6 +1,10 @@
 import React, { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import CashierSidebar from "@/components/cashier/CashierSidebar";
+import { queryKeys } from "@/constants/queryKeys";
+import { reportsService } from "@/services/modules/reportsService";
+import { getVietnamDate } from "./cashierDate";
 import {
   AlertTriangle,
   Bell,
@@ -73,153 +77,6 @@ export interface ShiftSummary {
   totalSales: string;
   status: "Closed" | "Open";
 }
-
-/* =========================================================
- * MOCK DATA
- * ========================================================= */
-
-const KPI_DATA: KPIData[] = [
-  {
-    label: "Gross Revenue",
-    value: "₫ 45.2M",
-    subtext: "↗ +5.2% vs yesterday",
-    trend: "positive",
-  },
-  {
-    label: "Discounts / Refunds",
-    value: "₫ -1.8M",
-    subtext: "4 refunds today",
-    trend: "negative",
-  },
-  {
-    label: "Net Revenue",
-    value: "₫ 43.4M",
-    subtext: "Total realized",
-    trend: "neutral",
-    highlighted: true,
-  },
-  {
-    label: "Total Orders",
-    value: "142",
-    subtext: "Peak: 12:00 - 14:00",
-    trend: "neutral",
-  },
-  {
-    label: "Avg Order Value",
-    value: "₫ 305k",
-    subtext: "↗ +2% vs yesterday",
-    trend: "positive",
-  },
-];
-
-const SALES_CATEGORIES: SalesCategory[] = [
-  {
-    name: "Food",
-    percentage: 65,
-    revenue: "₫ 28.2M",
-    tone: "orange",
-  },
-  {
-    name: "Beverages",
-    percentage: 25,
-    revenue: "₫ 10.8M",
-    tone: "blue",
-  },
-  {
-    name: "Others",
-    percentage: 10,
-    revenue: "₫ 4.4M",
-    tone: "slate",
-  },
-];
-
-const TOP_ITEMS: TopItem[] = [
-  {
-    rank: 1,
-    name: "Special Beef Pho",
-    quantity: 45,
-    unit: "servings",
-  },
-  {
-    rank: 2,
-    name: "Vietnamese Iced Coffee",
-    quantity: 38,
-    unit: "cups",
-  },
-  {
-    rank: 3,
-    name: "Broken Rice with Pork",
-    quantity: 32,
-    unit: "servings",
-  },
-  {
-    rank: 4,
-    name: "Hanoi Grilled Pork Noodles",
-    quantity: 28,
-    unit: "servings",
-  },
-  {
-    rank: 5,
-    name: "Peach Orange Lemongrass Tea",
-    quantity: 25,
-    unit: "cups",
-  },
-];
-
-const PAYMENT_METHODS: PaymentBreakdown[] = [
-  {
-    name: "Credit Card",
-    amount: "₫ 18.5M",
-    icon: CreditCard,
-  },
-  {
-    name: "QR Pay / MoMo",
-    amount: "₫ 15.2M",
-    icon: Smartphone,
-  },
-  {
-    name: "Cash",
-    amount: "₫ 9.7M",
-    icon: WalletCards,
-  },
-];
-
-const INVENTORY_ALERTS: InventoryAlert[] = [
-  {
-    name: "Kobe Beef",
-    status: "OUT OF STOCK",
-    severity: "danger",
-  },
-  {
-    name: "Pasteurized Fresh Milk",
-    status: "LOW STOCK (<5)",
-    severity: "warning",
-  },
-];
-
-const SHIFT_SUMMARY: ShiftSummary[] = [
-  {
-    staffName: "Alex Nguyen",
-    role: "Cashier",
-    shiftTime: "06:00 - 14:00",
-    totalSales: "₫ 18.5M",
-    status: "Closed",
-  },
-  {
-    staffName: "Bella Tran",
-    role: "Manager",
-    shiftTime: "10:00 - 18:00",
-    totalSales: "₫ 12.4M",
-    status: "Closed",
-  },
-  {
-    staffName: "Michael Le",
-    role: "Cashier",
-    shiftTime: "14:00 - 22:00",
-    totalSales: "₫ 12.5M",
-    status: "Open",
-  },
-];
 
 /* =========================================================
  * LEGACY NAV DATA
@@ -303,8 +160,9 @@ const ProgressBar: React.FC<{
  * ========================================================= */
 
 const EndOfDayReportPage: React.FC = () => {
-    const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState("2023-10-24");
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [selectedDate, setSelectedDate] = useState(() => getVietnamDate());
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -312,9 +170,87 @@ const EndOfDayReportPage: React.FC = () => {
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  /* =========================================================
-   * FILTERED SHIFTS
-   * ========================================================= */
+  const reportQuery = useQuery({
+    queryKey: queryKeys.analytics.endOfDay(selectedDate),
+    queryFn: () => reportsService.getEndOfDayReport(selectedDate),
+    staleTime: 60_000,
+  });
+
+  const reportData = reportQuery.data;
+
+  const KPI_DATA = useMemo<KPIData[]>(() => reportData ? [
+    {
+      label: "Gross Revenue",
+      value: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(reportData.summary.grossRevenue),
+      subtext: `${reportData.summary.paidOrders} paid bills`,
+      trend: "positive",
+    },
+    {
+      label: "Discounts / Refunds",
+      value: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(reportData.summary.refundAmount),
+      subtext: `${reportData.summary.discountAmount > 0 ? reportData.summary.discountAmount : 0} discounts`,
+      trend: "negative",
+    },
+    {
+      label: "Net Revenue",
+      value: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(reportData.summary.netRevenue),
+      subtext: "Total realized",
+      trend: "neutral",
+      highlighted: true,
+    },
+    {
+      label: "Total Orders",
+      value: String(reportData.summary.totalOrders),
+      subtext: `${reportData.summary.paidOrders} paid`,
+      trend: "neutral",
+    },
+    {
+      label: "Avg Order Value",
+      value: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(reportData.summary.averageOrderValue),
+      subtext: `Across ${reportData.summary.paidOrders} bills`,
+      trend: "positive",
+    },
+  ] : [], [reportData]);
+
+  const SALES_CATEGORIES: SalesCategory[] = useMemo(() => {
+    return (reportData?.salesByCategory ?? []).map((category, index) => ({
+      name: category.name,
+      percentage: Number(category.percentage.toFixed(0)),
+      revenue: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(category.revenue),
+      tone: index === 0 ? "orange" : index === 1 ? "blue" : "slate",
+    }));
+  }, [reportData]);
+
+  const TOP_ITEMS: TopItem[] = useMemo(() => (reportData?.topItems ?? []).map((item) => ({
+    rank: item.rank,
+    name: item.name,
+    quantity: item.quantity,
+    unit: item.unit,
+  })), [reportData]);
+
+  const PAYMENT_METHODS: PaymentBreakdown[] = useMemo(() => (reportData?.paymentMethods ?? []).map((payment) => {
+    const key = payment.method;
+    const icon = key === "CASH" ? WalletCards : key === "MOMO" ? Smartphone : CreditCard;
+    return {
+      name: key === "CASH" ? "Cash" : key === "MOMO" ? "QR Pay / MoMo" : key === "BANK_TRANSFER" ? "Bank Transfer" : "Credit Card",
+      amount: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(payment.amount),
+      icon,
+    };
+  }), [reportData]);
+
+  const INVENTORY_ALERTS: InventoryAlert[] = useMemo(() => (reportData?.inventoryAlerts ?? []).map((alert) => ({
+    name: alert.name,
+    status: alert.status,
+    severity: alert.severity,
+  })), [reportData]);
+
+  const SHIFT_SUMMARY: ShiftSummary[] = useMemo(() => (reportData?.shiftSummary ?? []).map((shift) => ({
+    staffName: shift.staffName,
+    role: shift.role,
+    shiftTime: shift.shiftTime,
+    totalSales: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(shift.totalSales),
+    status: shift.status,
+  })), [reportData]);
 
   const filteredShifts = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -329,18 +265,12 @@ const EndOfDayReportPage: React.FC = () => {
         shift.role.toLowerCase().includes(query) ||
         shift.shiftTime.toLowerCase().includes(query),
     );
-  }, [searchTerm]);
+  }, [searchTerm, SHIFT_SUMMARY]);
 
-  /* =========================================================
-   * HANDLERS
-   * ========================================================= */
-
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-
-    window.setTimeout(() => {
-      setIsRefreshing(false);
-    }, 700);
+    await queryClient.invalidateQueries({ queryKey: queryKeys.analytics.endOfDay(selectedDate) });
+    setTimeout(() => setIsRefreshing(false), 400);
   };
 
   const handlePrint = () => {
@@ -348,25 +278,27 @@ const EndOfDayReportPage: React.FC = () => {
   };
 
   const handleExportPdf = () => {
+    if (!reportData) return;
+
     setIsExporting(true);
 
     window.setTimeout(() => {
       setIsExporting(false);
 
-      const reportData = [
-        "BISTRO POS - END OF DAY REPORT",
+      const reportDataText = [
+        "ROMS POS - END OF DAY REPORT",
         `Date: ${formatDate(selectedDate)}`,
         "",
-        "Gross Revenue: ₫ 45.2M",
-        "Discounts / Refunds: ₫ -1.8M",
-        "Net Revenue: ₫ 43.4M",
-        "Total Orders: 142",
-        "Avg Order Value: ₫ 305k",
+        `Gross Revenue: ${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(reportData.summary.grossRevenue)}`,
+        `Discounts / Refunds: ${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(reportData.summary.refundAmount)}`,
+        `Net Revenue: ${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(reportData.summary.netRevenue)}`,
+        `Total Orders: ${reportData.summary.totalOrders}`,
+        `Avg Order Value: ${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(reportData.summary.averageOrderValue)}`,
         "",
         "Report generated by ROMS POS.",
       ].join("\n");
 
-      const blob = new Blob([reportData], {
+      const blob = new Blob([reportDataText], {
         type: "text/plain;charset=utf-8",
       });
 
@@ -374,7 +306,7 @@ const EndOfDayReportPage: React.FC = () => {
       const anchor = document.createElement("a");
 
       anchor.href = url;
-      anchor.download = `bistro-pos-end-of-day-${selectedDate}.txt`;
+      anchor.download = `roms-end-of-day-${selectedDate}.txt`;
 
       document.body.appendChild(anchor);
       anchor.click();
@@ -549,7 +481,6 @@ const EndOfDayReportPage: React.FC = () => {
                 >
                   <Bell className="h-[18px] w-[18px]" />
 
-                  <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-red-500 ring-2 ring-white" />
                 </button>
 
                 {showNotifications && (
@@ -572,15 +503,23 @@ const EndOfDayReportPage: React.FC = () => {
                       </button>
                     </div>
 
-                    <div className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">
-
-                      <div className="font-semibold">
-                        2 inventory alerts require attention
-                      </div>
-
-                      <div className="mt-1 text-xs text-rose-600">
-                        Kobe Beef is out of stock.
-                      </div>
+                    <div className="mt-3 space-y-2">
+                      {!reportData && (
+                        <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                          Inventory alerts are unavailable until the report loads.
+                        </div>
+                      )}
+                      {reportData?.inventoryAlerts.map((alert) => (
+                        <div key={alert.name} className="rounded-lg bg-rose-50 p-3 text-sm text-rose-800">
+                          <div className="font-semibold">{alert.name}</div>
+                          <div className="mt-1 text-xs text-rose-600">{alert.status}</div>
+                        </div>
+                      ))}
+                      {reportData?.inventoryAlerts.length === 0 && (
+                        <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                          No inventory alerts for this report date.
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -598,6 +537,18 @@ const EndOfDayReportPage: React.FC = () => {
               </button>
             </div>
           </header>
+
+          {reportQuery.isLoading && (
+            <div role="status" className="m-5 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+              Loading end-of-day report…
+            </div>
+          )}
+          {reportQuery.isError && (
+            <div role="alert" className="m-5 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <span>Could not load the end-of-day report for {selectedDate}.</span>
+              <button type="button" onClick={() => void reportQuery.refetch()} className="font-bold underline">Retry</button>
+            </div>
+          )}
 
           {/* ==========================================================
               SCROLLABLE DASHBOARD

@@ -1,6 +1,9 @@
 import React, { useMemo, useState } from "react";
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from "react-router-dom";
 import CashierSidebar from "@/components/cashier/CashierSidebar";
+import { queryKeys } from '@/constants/queryKeys';
+import { reportsService } from '@/services/modules/reportsService';
 import {
   Bell,
   CalendarDays,
@@ -30,7 +33,33 @@ type TimeRange = "Day" | "Week" | "Month";
 
 type TransactionStatus = "Completed" | "Cancelled" | "Refunded";
 
-type PaymentMethod = "Credit Card" | "Cash" | "QR Pay";
+type PaymentMethod = "Bank Transfer" | "Cash" | "MoMo" | "VNPAY";
+
+interface RevenueDashboardTransaction {
+  id: string;
+  date: string;
+  time: string;
+  status: 'Completed' | 'Refunded';
+  payment: 'CASH' | 'BANK_TRANSFER' | 'VNPAY' | 'MOMO';
+  amount: number;
+}
+
+interface CashierAuditLog {
+  id: string;
+  action: string;
+  entityName: string;
+  entityId: string;
+  createdAt: string;
+  actor: { fullName: string; role: string | null } | null;
+}
+
+interface CashierAuditLogResponse {
+  data: CashierAuditLog[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
 
 interface TransactionRecord {
   id: string;
@@ -61,199 +90,7 @@ interface PaymentMethodShare {
   emphasized?: boolean;
 }
 
-const TOTAL_ENTRIES = 128;
 const PAGE_SIZE = 5;
-
-const transactions: TransactionRecord[] = [
-  {
-    id: "#INV-0912",
-    date: "15 Oct",
-    time: "10:45 AM",
-    status: "Completed",
-    payment: "Credit Card",
-    amount: 850000,
-  },
-  {
-    id: "#INV-0911",
-    date: "15 Oct",
-    time: "10:30 AM",
-    status: "Cancelled",
-    payment: "QR Pay",
-    amount: 1200000,
-  },
-  {
-    id: "#INV-0910",
-    date: "15 Oct",
-    time: "09:15 AM",
-    status: "Refunded",
-    payment: "Cash",
-    amount: -450000,
-  },
-  {
-    id: "#INV-0909",
-    date: "15 Oct",
-    time: "08:50 AM",
-    status: "Completed",
-    payment: "Credit Card",
-    amount: 3400000,
-  },
-  {
-    id: "#INV-0908",
-    date: "15 Oct",
-    time: "08:15 AM",
-    status: "Completed",
-    payment: "Cash",
-    amount: 150000,
-  },
-  {
-    id: "#INV-0907",
-    date: "14 Oct",
-    time: "09:40 PM",
-    status: "Completed",
-    payment: "QR Pay",
-    amount: 720000,
-  },
-  {
-    id: "#INV-0906",
-    date: "14 Oct",
-    time: "08:20 PM",
-    status: "Completed",
-    payment: "Credit Card",
-    amount: 1850000,
-  },
-  {
-    id: "#INV-0905",
-    date: "14 Oct",
-    time: "07:15 PM",
-    status: "Cancelled",
-    payment: "Cash",
-    amount: 550000,
-  },
-  {
-    id: "#INV-0904",
-    date: "14 Oct",
-    time: "06:30 PM",
-    status: "Completed",
-    payment: "Cash",
-    amount: 920000,
-  },
-  {
-    id: "#INV-0903",
-    date: "14 Oct",
-    time: "05:50 PM",
-    status: "Refunded",
-    payment: "QR Pay",
-    amount: -280000,
-  },
-  {
-    id: "#INV-0902",
-    date: "14 Oct",
-    time: "04:45 PM",
-    status: "Completed",
-    payment: "Credit Card",
-    amount: 1280000,
-  },
-  {
-    id: "#INV-0901",
-    date: "14 Oct",
-    time: "03:20 PM",
-    status: "Completed",
-    payment: "QR Pay",
-    amount: 650000,
-  },
-  {
-    id: "#INV-0900",
-    date: "14 Oct",
-    time: "02:10 PM",
-    status: "Completed",
-    payment: "Cash",
-    amount: 420000,
-  },
-  {
-    id: "#INV-0899",
-    date: "14 Oct",
-    time: "01:05 PM",
-    status: "Cancelled",
-    payment: "Credit Card",
-    amount: 980000,
-  },
-  {
-    id: "#INV-0898",
-    date: "14 Oct",
-    time: "12:25 PM",
-    status: "Completed",
-    payment: "Credit Card",
-    amount: 2150000,
-  },
-  {
-    id: "#INV-0897",
-    date: "14 Oct",
-    time: "11:40 AM",
-    status: "Completed",
-    payment: "QR Pay",
-    amount: 390000,
-  },
-  {
-    id: "#INV-0896",
-    date: "14 Oct",
-    time: "10:50 AM",
-    status: "Refunded",
-    payment: "Cash",
-    amount: -350000,
-  },
-  {
-    id: "#INV-0895",
-    date: "14 Oct",
-    time: "09:30 AM",
-    status: "Completed",
-    payment: "Credit Card",
-    amount: 1740000,
-  },
-  {
-    id: "#INV-0894",
-    date: "14 Oct",
-    time: "08:45 AM",
-    status: "Completed",
-    payment: "Cash",
-    amount: 275000,
-  },
-  {
-    id: "#INV-0893",
-    date: "13 Oct",
-    time: "09:10 PM",
-    status: "Completed",
-    payment: "QR Pay",
-    amount: 880000,
-  },
-];
-
-const dailySales: DailySalesChartData[] = [
-  { day: "Mon", amount: 18 },
-  { day: "Tue", amount: 31 },
-  { day: "Wed", amount: 14 },
-  { day: "Thu", amount: 43, highlighted: true },
-  { day: "Fri", amount: 26 },
-  { day: "Sat", amount: 20 },
-];
-
-const paymentMethods: PaymentMethodShare[] = [
-  {
-    label: "Credit/Debit Card",
-    percentage: 65,
-    icon: <CreditCard size={15} strokeWidth={1.8} />,
-    emphasized: true,
-  },
-  {
-    label: "Cash",
-    percentage: 25,
-    icon: <Banknote size={15} strokeWidth={1.8} />,
-  },
-  {
-    label: "QR Payment",
-    percentage: 10,
-    icon: <QrCode size={15} strokeWidth={1.8} />,
-  },
-];
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
@@ -277,13 +114,14 @@ const getStatusClasses = (status: TransactionStatus) => {
 
 const getPaymentIcon = (payment: PaymentMethod) => {
   switch (payment) {
-    case "Credit Card":
+    case "Bank Transfer":
       return <CreditCard size={14} strokeWidth={1.8} />;
 
     case "Cash":
       return <Banknote size={14} strokeWidth={1.8} />;
 
-    case "QR Pay":
+    case "MoMo":
+    case "VNPAY":
       return <QrCode size={14} strokeWidth={1.8} />;
   }
 };
@@ -329,74 +167,53 @@ const RevenueAndAuditLogPage: React.FC = () => {
   const [showCustomRange, setShowCustomRange] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
+  const revenueQuery = useQuery({
+    queryKey: queryKeys.analytics.revenue({ period: timeRange.toLowerCase() }),
+    queryFn: () => reportsService.getRevenueSummary({ period: timeRange.toLowerCase() }),
+    staleTime: 1000 * 60,
+  });
+
+  const auditQuery = useQuery({
+    queryKey: ["cashier", "audit-logs", { page: 1, limit: 8 }],
+    queryFn: async () => await reportsService.getAuditLogs({ page: 1, limit: 8 }) as CashierAuditLogResponse,
+  });
+
+  const revenueData = revenueQuery.data;
+
   const kpis: RevenueKPI[] = useMemo(() => {
-    if (timeRange === "Day") {
-      return [
-        {
-          label: "REVENUE INFLOW",
-          value: 4250000,
-          comparison: "+8.4% vs yesterday",
-          trend: "up",
-        },
-        {
-          label: "OUTFLOW (REFUNDS, EXPENSES)",
-          value: 180000,
-          comparison: "-4.2% vs yesterday",
-          trend: "down",
-        },
-        {
-          label: "TOTAL NET PROFIT",
-          value: 4070000,
-          comparison: "+10.1% vs yesterday",
-          trend: "up",
-        },
-      ];
-    }
-
-    if (timeRange === "Week") {
-      return [
-        {
-          label: "REVENUE INFLOW",
-          value: 12950000,
-          comparison: "+6.8% vs last week",
-          trend: "up",
-        },
-        {
-          label: "OUTFLOW (REFUNDS, EXPENSES)",
-          value: 920000,
-          comparison: "-1.8% vs last week",
-          trend: "down",
-        },
-        {
-          label: "TOTAL NET PROFIT",
-          value: 12030000,
-          comparison: "+9.3% vs last week",
-          trend: "up",
-        },
-      ];
-    }
-
+    if (!revenueData) return [];
     return [
       {
         label: "REVENUE INFLOW",
-        value: 45200000,
-        comparison: "+12.5% vs last month",
+        value: revenueData.summary.grossRevenue,
+        comparison: `${revenueData.summary.paidOrders} paid bills`,
         trend: "up",
       },
       {
-        label: "OUTFLOW (REFUNDS, EXPENSES)",
-        value: 1850000,
-        comparison: "-2.1% vs last month",
+        label: "REFUNDS",
+        value: revenueData.summary.refundAmount,
+        comparison: `${revenueData.summary.discountAmount} discounts`,
         trend: "down",
       },
       {
-        label: "TOTAL NET PROFIT",
-        value: 43350000,
-        comparison: "+15.3% vs last month",
+        label: "NET REVENUE",
+        value: revenueData.summary.netRevenue,
+        comparison: `${revenueData.summary.averageOrderValue} avg / bill`,
         trend: "up",
       },
     ];
-  }, [timeRange]);
+  }, [revenueData]);
+
+  const transactions: TransactionRecord[] = useMemo(() => {
+    return (revenueData?.recentTransactions ?? []).map((item: RevenueDashboardTransaction) => ({
+      id: item.id,
+      date: item.date,
+      time: item.time,
+      status: item.status,
+      payment: item.payment === 'CASH' ? 'Cash' : item.payment === 'BANK_TRANSFER' ? 'Bank Transfer' : item.payment === 'MOMO' ? 'MoMo' : 'VNPAY',
+      amount: item.amount,
+    }));
+  }, [revenueData]);
 
   const filteredTransactions = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -414,9 +231,7 @@ const RevenueAndAuditLogPage: React.FC = () => {
 
       return matchesSearch && matchesStatus;
     });
-  }, [searchTerm, statusFilter]);
-
-  const totalPages = Math.ceil(TOTAL_ENTRIES / PAGE_SIZE);
+  }, [searchTerm, statusFilter, transactions]);
 
   const visibleTransactions = useMemo(() => {
     if (searchTerm || statusFilter !== "All") {
@@ -475,6 +290,46 @@ const RevenueAndAuditLogPage: React.FC = () => {
       )
     );
   };
+
+  const chartSeries = useMemo<DailySalesChartData[]>(() => {
+    const dailyItems = revenueData?.dailyRevenue ?? [];
+
+    if (!dailyItems.length) {
+      return [];
+    }
+
+    const maxValue = Math.max(...dailyItems.map((item: { revenue: number }) => item.revenue), 1);
+    return dailyItems.map((item: { date: string; revenue: number }, index: number) => ({
+      day: new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        month: 'short',
+        day: 'numeric',
+      }).format(new Date(`${item.date}T12:00:00+07:00`)),
+      amount: Number((item.revenue / maxValue * 45).toFixed(1)),
+      highlighted: index === dailyItems.length - 1,
+    }));
+  }, [revenueData?.dailyRevenue]);
+
+  const paymentBreakdown = useMemo<PaymentMethodShare[]>(() => {
+    const methods = revenueData?.paymentMethods ?? [];
+    if (!methods.length) {
+      return [];
+    }
+
+    const total = methods.reduce((sum: number, item: { amount: number }) => sum + item.amount, 0) || 1;
+    return methods.map((item: { method: 'CASH' | 'BANK_TRANSFER' | 'VNPAY' | 'MOMO'; amount: number }, index: number) => ({
+      label: item.method === 'CASH' ? 'Cash' : item.method === 'BANK_TRANSFER' ? 'Bank Transfer' : item.method === 'MOMO' ? 'Momo' : 'VNPAY',
+      percentage: Number(((item.amount / total) * 100).toFixed(1)),
+      icon: index === 0 ? <CreditCard size={15} strokeWidth={1.8} /> : item.method === 'CASH' ? <Banknote size={15} strokeWidth={1.8} /> : <QrCode size={15} strokeWidth={1.8} />,
+      emphasized: index === 0,
+    }));
+  }, [revenueData?.paymentMethods]);
+
+  const leadingPaymentMethod = [...paymentBreakdown].sort(
+    (left, right) => right.percentage - left.percentage,
+  )[0];
+
+  const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE));
 
   const getPageNumbers = () => {
     if (totalPages <= 5) {
@@ -627,7 +482,7 @@ const RevenueAndAuditLogPage: React.FC = () => {
                 type="button"
                 title="Refresh"
                 className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-orange-700"
-                onClick={() => window.location.reload()}
+                onClick={() => void Promise.all([revenueQuery.refetch(), auditQuery.refetch()])}
               >
                 <RefreshCw size={16} />
               </button>
@@ -645,7 +500,6 @@ const RevenueAndAuditLogPage: React.FC = () => {
                 >
                   <Bell size={17} />
 
-                  <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-orange-600 ring-2 ring-white" />
                 </button>
 
                 {showNotifications && (
@@ -655,21 +509,10 @@ const RevenueAndAuditLogPage: React.FC = () => {
                         Notifications
                       </p>
 
-                      <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-bold text-orange-700">
-                        2 new
-                      </span>
                     </div>
 
-                    <div className="mt-3 space-y-2">
-                      <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-                        There are 2 transactions that need
-                        review.
-                      </div>
-
-                      <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-                        Today's revenue is currently 8.4%
-                        higher.
-                      </div>
+                    <div className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                      Cashier notifications are not available because the backend does not expose a notifications API.
                     </div>
                   </div>
                 )}
@@ -781,6 +624,20 @@ const RevenueAndAuditLogPage: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {revenueQuery.isLoading && (
+                <div role="status" className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600">
+                  Loading revenue data…
+                </div>
+              )}
+              {revenueQuery.isError && (
+                <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Revenue data could not be loaded. Check the backend connection and retry.</span>
+                    <button type="button" onClick={() => void revenueQuery.refetch()} className="underline">Retry</button>
+                  </div>
+                </div>
+              )}
 
               {/* KPI Cards */}
               <div className="mb-5 grid grid-cols-3 gap-4">
@@ -1057,8 +914,8 @@ const RevenueAndAuditLogPage: React.FC = () => {
                             1
                           } to ${Math.min(
                             currentPage * PAGE_SIZE,
-                            TOTAL_ENTRIES
-                          )} of ${TOTAL_ENTRIES} entries`}
+                            filteredTransactions.length
+                          )} of ${filteredTransactions.length} entries`}
                     </p>
 
                     <div className="flex items-center gap-1">
@@ -1149,7 +1006,7 @@ const RevenueAndAuditLogPage: React.FC = () => {
                       <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t border-slate-200" />
 
                       <div className="absolute inset-x-0 bottom-0 top-1 flex items-end justify-between gap-2 px-1">
-                        {dailySales.map((item) => {
+                        {chartSeries.map((item) => {
                           const height = `${
                             (item.amount / 45) * 100
                           }%`;
@@ -1193,6 +1050,38 @@ const RevenueAndAuditLogPage: React.FC = () => {
                     </div>
                   </section>
 
+                  {/* Cashier audit records */}
+                  <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h2 className="text-sm font-black text-slate-800">Recent Audit Records</h2>
+                      {auditQuery.data && <span className="text-[10px] font-semibold text-slate-500">{auditQuery.data.total} total</span>}
+                    </div>
+                    {auditQuery.isLoading ? (
+                      <p className="text-xs text-slate-500">Loading audit records…</p>
+                    ) : auditQuery.isError ? (
+                      <div role="alert" className="flex items-center justify-between gap-3 text-xs font-semibold text-red-700">
+                        <span>Audit records could not be loaded.</span>
+                        <button type="button" onClick={() => void auditQuery.refetch()} className="underline">Retry</button>
+                      </div>
+                    ) : auditQuery.data?.data.length ? (
+                      <ul className="space-y-3">
+                        {auditQuery.data.data.map((entry) => (
+                          <li key={entry.id} className="border-b border-slate-100 pb-2 last:border-0 last:pb-0">
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="text-xs font-bold text-slate-700">{entry.action.replaceAll("_", " ")}</span>
+                              <time className="shrink-0 text-[10px] text-slate-400">{new Date(entry.createdAt).toLocaleString()}</time>
+                            </div>
+                            <p className="mt-1 truncate text-[10px] text-slate-500">
+                              {entry.entityName} · {entry.entityId} · {entry.actor?.fullName ?? "System"}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-slate-500">No audit records for this period.</p>
+                    )}
+                  </section>
+
                   {/* Payment Distribution */}
                   <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
                     <div className="mb-4 flex items-center justify-between">
@@ -1202,7 +1091,7 @@ const RevenueAndAuditLogPage: React.FC = () => {
                     </div>
 
                     <div className="space-y-4">
-                      {paymentMethods.map(
+                      {paymentBreakdown.map(
                         (method) => (
                           <div key={method.label}>
                             <div className="mb-1.5 flex items-center justify-between">
@@ -1262,10 +1151,9 @@ const RevenueAndAuditLogPage: React.FC = () => {
                         </h3>
 
                         <p className="mt-1 font-sans text-[10px] leading-5 text-slate-500">
-                          Credit card payments account for
-                          the largest share, representing 65%
-                          of total transactions during this
-                          period.
+                          {leadingPaymentMethod
+                            ? `${leadingPaymentMethod.label} accounts for the largest share, representing ${leadingPaymentMethod.percentage}% of recorded revenue during this period.`
+                            : "Payment method data is unavailable for this period."}
                         </p>
                       </div>
                     </div>

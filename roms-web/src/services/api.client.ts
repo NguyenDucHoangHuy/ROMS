@@ -1,5 +1,10 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/stores/authStore'
+import {
+  isCashierApiRequest,
+  isCashierDemoAuthBypassEnabled,
+  isCashierDemoRequest,
+} from '@/services/cashierDemoMode'
 
 const API_URL = import.meta.env.VITE_API_URL as string || 'http://localhost:3000/api/v1'
 
@@ -15,6 +20,14 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const { tokens } = useAuthStore.getState()
+    if (
+      isCashierDemoAuthBypassEnabled() &&
+      isCashierDemoRequest(config)
+    ) {
+      config.headers.delete('Authorization')
+      return config
+    }
+
     if (tokens?.accessToken) {
       config.headers.Authorization = `Bearer ${tokens.accessToken}`
     }
@@ -49,6 +62,15 @@ apiClient.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (
+        isCashierDemoAuthBypassEnabled() &&
+        isCashierApiRequest(originalRequest)
+      ) {
+        return Promise.reject(error)
+      }
+
+      const { tokens } = useAuthStore.getState()
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
@@ -63,7 +85,7 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
-      const { tokens, updateTokens, logout } = useAuthStore.getState()
+      const { updateTokens, logout } = useAuthStore.getState()
 
       try {
         const response = await axios.post<{ accessToken: string; refreshToken: string }>(

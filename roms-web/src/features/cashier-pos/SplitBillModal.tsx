@@ -1,5 +1,9 @@
-import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { cashierService } from "@/services/modules/cashierService";
+import { queryKeys } from "@/constants/queryKeys";
+import { CASHIER_DEV_READ_ONLY } from "./cashierPreviewMode";
 import {
   ArrowRight,
   ChevronLeft,
@@ -22,6 +26,7 @@ import {
 
 export interface BillItem {
   id: string;
+  orderItemId?: string;
   name: string;
   quantity: number;
   unitPrice: number;
@@ -42,55 +47,6 @@ export interface SplitState {
 /* =========================================================
    CONSTANTS
 ========================================================= */
-
-const ORIGINAL_TOTAL = 315000;
-
-const INITIAL_UNASSIGNED_ITEMS: BillItem[] = [
-  {
-    id: "pho-bo",
-    name: "Special Beef Pho",
-    quantity: 2,
-    unitPrice: 65000,
-  },
-  {
-    id: "coffee",
-    name: "Vietnamese Iced Milk Coffee",
-    quantity: 1,
-    unitPrice: 30000,
-  },
-  {
-    id: "cha-gio",
-    name: "Shrimp & Pork Spring Rolls",
-    quantity: 1,
-    unitPrice: 45000,
-  },
-  {
-    id: "tra-da",
-    name: "Iced Tea",
-    quantity: 4,
-    unitPrice: 5000,
-  },
-];
-
-const INITIAL_SUB_BILLS: SubBill[] = [
-  {
-    id: "bill-1",
-    name: "Bill 1",
-    items: [
-      {
-        id: "coffee-assigned",
-        name: "Vietnamese Iced Milk Coffee",
-        quantity: 2,
-        unitPrice: 30000,
-      },
-    ],
-  },
-  {
-    id: "bill-2",
-    name: "Bill 2",
-    items: [],
-  },
-];
 
 /* =========================================================
    HELPERS
@@ -117,16 +73,98 @@ const getBillTotal = (bill: SubBill) => {
 
 const SplitBillModal: React.FC = () => {
   const navigate = useNavigate();
-
-  const [unassignedItems, setUnassignedItems] = useState<BillItem[]>(
-    INITIAL_UNASSIGNED_ITEMS,
+  const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+  const tableId = searchParams.get("tableId") ?? "";
+  const isValidTableId =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tableId);
+  const orderQuery = useQuery({
+    queryKey: queryKeys.cashier.tableOrder(tableId),
+    queryFn: () => cashierService.getTableOrder(tableId),
+    enabled: isValidTableId,
+  });
+  const unpaidBills =
+    orderQuery.data?.bills.filter((item) => item.status === "UNPAID") ?? [];
+  const hasPriorSplit =
+    orderQuery.data?.bills.some((item) => item.status === "PARTIALLY_PAID") ?? false;
+  const bill =
+    unpaidBills.length === 1 && !hasPriorSplit ? unpaidBills[0] : undefined;
+  const itemsSubtotal = orderQuery.data?.orderItems.reduce(
+    (total, item) => total + Math.round(item.unitPrice * 100) * item.quantity,
+    0,
   );
-
-  const [subBills, setSubBills] =
-    useState<SubBill[]>(INITIAL_SUB_BILLS);
-
-  const [selectedSubBillId, setSelectedSubBillId] =
-    useState<string>("bill-1");
+  const billMatchesItems =
+    bill !== undefined &&
+    itemsSubtotal === Math.round(bill.subtotalAmount * 100);
+  const canConfigureSplit = Boolean(
+    billMatchesItems &&
+      orderQuery.data &&
+      orderQuery.data.orderItems.length > 0,
+  );
+  const [unassignedItems, setUnassignedItems] = useState<BillItem[]>([]);
+  const [subBills, setSubBills] = useState<SubBill[]>([]);
+  const [selectedSubBillId, setSelectedSubBillId] = useState<string>("");
+  const [actionError, setActionError] = useState("");
+  const [initializedOrderId, setInitializedOrderId] = useState("");
+  const [moveQuantities, setMoveQuantities] = useState<Record<string, number>>({});
+  /* eslint-disable react-hooks/set-state-in-effect -- hydrate editable split state when the server query resolves. */
+  useEffect(() => {
+    if (!orderQuery.data?.order || initializedOrderId === orderQuery.data.order.id) return;
+    setUnassignedItems(orderQuery.data.orderItems.map((item) => ({
+      id: item.id,
+      orderItemId: item.id,
+      name: item.menuItemName,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+    })));
+    const groups = [{ id: "split-1", name: "Bill 1", items: [] as BillItem[] }, { id: "split-2", name: "Bill 2", items: [] as BillItem[] }];
+    setSubBills(groups);
+    setSelectedSubBillId(groups[0].id);
+    setInitializedOrderId(orderQuery.data.order.id);
+  }, [orderQuery.data, initializedOrderId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+  const prepareBillMutation = useMutation({
+    mutationFn: async () => {
+      const session = orderQuery.data?.diningSession;
+      if (!session || !orderQuery.data?.orderItems.length) {
+        throw new Error("This table has no active order to create a bill for.");
+      }
+      await cashierService.createBill(session.id, {});
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.cashier.tables() }),
+        orderQuery.refetch(),
+      ]);
+    },
+    onError: (error) =>
+      {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "Could not create a bill for this table.",
+        );
+        void orderQuery.refetch();
+      },
+  });
+  const splitMutation = useMutation({
+    mutationFn: () => {
+      if (!bill) throw new Error("This table has no unpaid bill to split.");
+      return cashierService.splitBill(bill.id, subBills.map((group) => ({
+        name: group.name,
+        items: group.items.map((item) => ({ orderItemId: item.orderItemId ?? item.id, quantity: item.quantity })),
+      })));
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.cashier.tables() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.cashier.tableOrder(tableId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.cashier.transactions() }),
+      ]);
+      navigate("/cashier/checkout");
+    },
+    onError: (error) => setActionError(error instanceof Error ? error.message : "Could not split this bill."),
+  });
 
   const [quickSplitCount, setQuickSplitCount] =
     useState<number>(2);
@@ -148,18 +186,19 @@ const SplitBillModal: React.FC = () => {
     );
   }, [subBills]);
 
+  const originalTotal = bill?.subtotalAmount ?? 0;
   const remainingTotal = useMemo(() => {
-    return Math.max(ORIGINAL_TOTAL - splitTotal, 0);
-  }, [splitTotal]);
+    return Math.max(originalTotal - splitTotal, 0);
+  }, [splitTotal, originalTotal]);
 
   const progress = useMemo(() => {
-    if (!ORIGINAL_TOTAL) return 0;
+    if (!originalTotal) return 0;
 
     return Math.min(
-      Math.round((splitTotal / ORIGINAL_TOTAL) * 100),
+      Math.round((splitTotal / originalTotal) * 100),
       100,
     );
-  }, [splitTotal]);
+  }, [splitTotal, originalTotal]);
 
   /* =========================================================
      ADD SUB BILL
@@ -226,11 +265,29 @@ const SplitBillModal: React.FC = () => {
   const handleMoveToBill = (
     item: BillItem,
     targetBillId: string,
+    quantityToMove = item.quantity,
   ) => {
+    if (
+      !Number.isInteger(quantityToMove) ||
+      quantityToMove < 1 ||
+      quantityToMove > item.quantity
+    ) {
+      return;
+    }
+    setMoveQuantities((current) => {
+      const next = { ...current };
+      delete next[item.id];
+      return next;
+    });
+
     setUnassignedItems((prev) =>
-      prev.filter(
-        (currentItem) => currentItem.id !== item.id,
-      ),
+      prev.flatMap((currentItem) => {
+        if (currentItem.id !== item.id) return [currentItem];
+        const remainingQuantity = currentItem.quantity - quantityToMove;
+        return remainingQuantity > 0
+          ? [{ ...currentItem, quantity: remainingQuantity }]
+          : [];
+      }),
     );
 
     setSubBills((prevBills) =>
@@ -238,9 +295,7 @@ const SplitBillModal: React.FC = () => {
         if (bill.id !== targetBillId) return bill;
 
         const existingItem = bill.items.find(
-          (currentItem) =>
-            currentItem.name === item.name &&
-            currentItem.unitPrice === item.unitPrice,
+          (currentItem) => currentItem.orderItemId === item.orderItemId,
         );
 
         if (existingItem) {
@@ -251,8 +306,7 @@ const SplitBillModal: React.FC = () => {
                 ? {
                     ...currentItem,
                     quantity:
-                      currentItem.quantity +
-                      item.quantity,
+                      currentItem.quantity + quantityToMove,
                   }
                 : currentItem,
             ),
@@ -265,6 +319,7 @@ const SplitBillModal: React.FC = () => {
             ...bill.items,
             {
               ...item,
+              quantity: quantityToMove,
               id: `${item.id}-${targetBillId}-${Date.now()}`,
             },
           ],
@@ -369,9 +424,7 @@ const SplitBillModal: React.FC = () => {
             const existingItem =
               bill.items.find(
                 (currentItem) =>
-                  currentItem.name === item.name &&
-                  currentItem.unitPrice ===
-                    item.unitPrice,
+                  currentItem.orderItemId === item.orderItemId,
               );
 
             if (existingItem) {
@@ -488,11 +541,14 @@ const SplitBillModal: React.FC = () => {
   ========================================================= */
 
   const handleReset = () => {
-    setUnassignedItems(
-      INITIAL_UNASSIGNED_ITEMS,
-    );
-    setSubBills(INITIAL_SUB_BILLS);
-    setSelectedSubBillId("bill-1");
+    const items = (orderQuery.data?.orderItems ?? []).map((item) => ({
+      id: item.id, orderItemId: item.id, name: item.menuItemName,
+      quantity: item.quantity, unitPrice: item.unitPrice,
+    }));
+    const groups = [{ id: `reset-1-${Date.now()}`, name: "Bill 1", items: [] as BillItem[] }, { id: `reset-2-${Date.now()}`, name: "Bill 2", items: [] as BillItem[] }];
+    setUnassignedItems(items);
+    setSubBills(groups);
+    setSelectedSubBillId(groups[0].id);
     setQuickSplitCount(2);
   };
 
@@ -501,20 +557,24 @@ const SplitBillModal: React.FC = () => {
   ========================================================= */
 
   const handleSave = () => {
-    const payload: SplitState = {
-      unassignedItems,
-      subBills,
-      selectedSubBillId,
-    };
-
-    console.log(
-      "Split bill configuration:",
-      payload,
-    );
-
-    alert(
-      "Bill split configuration has been saved.",
-    );
+    setActionError("");
+    if (CASHIER_DEV_READ_ONLY) {
+      setActionError("Saving a split bill is disabled in development read-only preview mode.");
+      return;
+    }
+    if (!bill) {
+      setActionError("This table does not have a single eligible unpaid bill to split.");
+      return;
+    }
+    if (!billMatchesItems) {
+      setActionError("The bill total no longer matches the order items. Refresh the table before splitting.");
+      return;
+    }
+    if (unassignedItems.length || subBills.length < 2 || subBills.some((group) => group.items.length === 0)) {
+      setActionError("Assign every item to at least two non-empty bills before saving.");
+      return;
+    }
+    splitMutation.mutate();
   };
 
   /* =========================================================
@@ -588,12 +648,32 @@ const SplitBillModal: React.FC = () => {
           </div>
         </div>
 
+        <label className="flex shrink-0 flex-col items-center gap-1 text-xs font-semibold text-slate-500">
+          Qty
+          <input
+            type="number"
+            min={1}
+            max={item.quantity}
+            step={1}
+            value={moveQuantities[item.id] ?? item.quantity}
+            onChange={(event) =>
+              setMoveQuantities((current) => ({
+                ...current,
+                [item.id]: Number(event.target.value),
+              }))
+            }
+            className="w-16 rounded-md border border-slate-200 px-2 py-1 text-center text-sm text-slate-700"
+            aria-label={`Quantity of ${item.name} to move`}
+          />
+        </label>
+
         <button
           type="button"
           onClick={() =>
             handleMoveToBill(
               item,
               selectedSubBillId,
+              moveQuantities[item.id] ?? item.quantity,
             )
           }
           className="
@@ -1031,24 +1111,24 @@ const SplitBillModal: React.FC = () => {
             </div>
 
             <div className="mt-1 text-sm font-medium text-slate-400">
-              Table 12{" "}
+              {orderQuery.data?.table.name ?? "Loading table…"}{" "}
               <span className="mx-1">
                 •
               </span>{" "}
-              Order #8821
+              {orderQuery.data?.order
+                ? `Order ${orderQuery.data.order.orderCode}`
+                : "No active order"}
             </div>
           </div>
         </div>
 
         <div className="flex flex-col items-end">
           <span className="text-sm font-semibold text-slate-400">
-            Original Bill Total
+            {bill ? "Original Bill Subtotal" : "Split unavailable"}
           </span>
 
           <span className="mt-0.5 text-3xl font-extrabold tracking-tight text-orange-600">
-            {formatCurrency(
-              ORIGINAL_TOTAL,
-            )}
+            {bill ? formatCurrency(originalTotal) : "No unpaid bill"}
           </span>
         </div>
       </header>
@@ -1058,6 +1138,7 @@ const SplitBillModal: React.FC = () => {
       ===================================================== */}
 
       <div
+        hidden={!canConfigureSplit}
         className="
           flex
           h-[70px]
@@ -1225,7 +1306,66 @@ const SplitBillModal: React.FC = () => {
           py-5
         "
       >
+        {!tableId && <div role="alert" className="mb-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">Choose a table from checkout before splitting a bill.</div>}
+        {tableId && !isValidTableId && <div role="alert" className="mb-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">The table ID in this URL is not a valid UUID.</div>}
+        {orderQuery.isLoading && <div role="status" className="mb-3 rounded-lg bg-white px-4 py-3 text-sm text-slate-600">Loading table bill…</div>}
+        {orderQuery.isError && (
+          <div role="alert" className="mb-3 flex items-center justify-between rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span>
+              {orderQuery.error instanceof Error
+                ? orderQuery.error.message
+                : "Could not load this table bill."}
+            </span>
+            <button type="button" onClick={() => void orderQuery.refetch()} className="font-bold underline">Retry</button>
+          </div>
+        )}
+        {orderQuery.data && !orderQuery.data.diningSession && (
+          <div role="status" className="mb-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            This table has no active dining session.
+          </div>
+        )}
+        {orderQuery.data?.orderItems.length === 0 && (
+          <div role="status" className="mb-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            This table has no order items to allocate.
+          </div>
+        )}
+        {orderQuery.data?.diningSession &&
+          orderQuery.data.orderItems.length > 0 &&
+          orderQuery.data.bills.length === 0 &&
+          ["OPEN", "PAYING"].includes(orderQuery.data.diningSession.status) && (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <span>This active order has no bill yet. Create its database-backed bill before assigning items.</span>
+              <button
+                type="button"
+                disabled={prepareBillMutation.isPending}
+                onClick={() => {
+                  setActionError("");
+                  prepareBillMutation.mutate();
+                }}
+                className="rounded-lg bg-orange-600 px-4 py-2 font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {prepareBillMutation.isPending ? "Creating bill…" : "Create bill for split"}
+              </button>
+            </div>
+          )}
+        {orderQuery.data && unpaidBills.length > 1 && (
+          <div role="alert" className="mb-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            This session already has multiple unpaid bills. Select the intended bill from checkout; this screen cannot infer item ownership across bills.
+          </div>
+        )}
+        {orderQuery.data && hasPriorSplit && (
+          <div role="alert" className="mb-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            This session has already been split. Its bill-to-item allocation is not stored as a database relation, so it cannot be split again safely.
+          </div>
+        )}
+        {bill && !billMatchesItems && (
+          <div role="alert" className="mb-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            The bill subtotal does not match the active order items. Refresh or reconcile the bill before splitting.
+          </div>
+        )}
+        {actionError && <div role="alert" className="mb-3 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div>}
         <div
+          hidden={!canConfigureSplit}
           className="
             grid
             h-full
@@ -1428,6 +1568,7 @@ const SplitBillModal: React.FC = () => {
       ===================================================== */}
 
       <footer
+        hidden={!canConfigureSplit}
         className="
           flex
           h-[96px]
@@ -1480,7 +1621,7 @@ const SplitBillModal: React.FC = () => {
             )}{" "}
             /{" "}
             {formatCurrency(
-              ORIGINAL_TOTAL,
+              originalTotal,
             )}
           </div>
         </div>
@@ -1519,6 +1660,7 @@ const SplitBillModal: React.FC = () => {
             onClick={
               handleSave
             }
+            disabled={CASHIER_DEV_READ_ONLY || splitMutation.isPending}
             className="
               flex
               h-13

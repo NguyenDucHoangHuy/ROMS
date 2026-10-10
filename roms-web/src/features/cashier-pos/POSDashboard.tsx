@@ -1,332 +1,276 @@
 import React, { useMemo, useState } from "react";
-import {
-  Bell,
-  Banknote,
-  CreditCard,
-  History,
-  LifeBuoy,
-  MoreHorizontal,
-  Plus,
-  QrCode,
-  Receipt,
-  RefreshCw,
-  RotateCcw,
-  Search,
-  Settings,
-  ShoppingBag,
-  Split,
-  WalletCards,
-  X,
-} from "lucide-react";
-
+import { Bell, Banknote, CreditCard, History, LifeBuoy, MoreHorizontal, Plus, QrCode, Receipt, RefreshCw, RotateCcw, Search, Settings, ShoppingBag, Split, WalletCards, X, } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/constants/queryKeys";
+import { cashierService } from "@/services/modules/cashierService";
+import { reportsService } from "@/services/modules/reportsService";
+import { CASHIER_DEV_READ_ONLY } from "./cashierPreviewMode";
+import { useLocation, useNavigate } from "react-router-dom";
 /* =========================================================
  * TYPES
  * ========================================================= */
-
 export interface OrderItem {
-  id: string;
-  name: string;
-  note?: string;
-  quantity: number;
-
-  /**
-   * Giá được hiển thị trong POS là tổng giá của dòng món.
-   * Ví dụ: Phở quantity = 2, price = 150.000đ.
-   * Điều này khớp với UI mẫu và subtotal 315.000đ.
-   */
-  price: number;
+    id: string;
+    name: string;
+    note?: string;
+    quantity: number;
+    /**
+     * Giá được hiển thị trong POS là tổng giá của dòng món.
+     * Ví dụ: Phở quantity = 2, price = 150.000đ.
+     * Điều này khớp với UI mẫu và subtotal 315.000đ.
+     */
+    price: number;
 }
-
-export type PaymentMethod =
-  | "cash"
-  | "card"
-  | "ewallet"
-  | "qr";
-
+export type PaymentMethod = "cash" | "bank_transfer" | "momo" | "vnpay";
 export interface PendingOrder {
-  id: string;
-  table: string;
-  elapsed: string;
-  amount: number;
+    id: string;
+    table: string;
+    elapsed: string;
+    amount: number;
 }
-
 export interface Transaction {
-  id: string;
-  table: string;
-  paymentMethod: string;
-  timestamp: string;
-  amount: number;
-  status: "Hoàn tất" | "Đang xử lý";
+    id: string;
+    table: string;
+    paymentMethod: string;
+    timestamp: string;
+    amount: number;
+    status: string;
 }
-
-/* =========================================================
- * MOCK DATA
- * ========================================================= */
-
-const orderItems: OrderItem[] = [
-  {
-    id: "item-1",
-    name: "Phở Bò Đặc Biệt",
-    note: "Ít bánh, nhiều hành",
-    quantity: 2,
-    price: 150_000,
-  },
-  {
-    id: "item-2",
-    name: "Chả Giò",
-    note: "Phần",
-    quantity: 1,
-    price: 85_000,
-  },
-  {
-    id: "item-3",
-    name: "Cà Phê Sữa Đá",
-    quantity: 2,
-    price: 70_000,
-  },
-  {
-    id: "item-4",
-    name: "Trà Đá",
-    quantity: 2,
-    price: 10_000,
-  },
-];
-
-const pendingOrders: PendingOrder[] = [
-  {
-    id: "pending-1",
-    table: "Bàn 08",
-    elapsed: "5 phút trước",
-    amount: 850_000,
-  },
-  {
-    id: "pending-2",
-    table: "Bàn 12",
-    elapsed: "2 phút trước",
-    amount: 1_240_000,
-  },
-  {
-    id: "pending-3",
-    table: "Mang đi #45",
-    elapsed: "Vừa xong",
-    amount: 120_000,
-  },
-];
-
-const transactions: Transaction[] = [
-  {
-    id: "#28490",
-    table: "Bàn 02",
-    paymentMethod: "Thẻ tín dụng",
-    timestamp: "12:45",
-    amount: 540_000,
-    status: "Hoàn tất",
-  },
-  {
-    id: "#28489",
-    table: "Bàn 05",
-    paymentMethod: "Tiền mặt",
-    timestamp: "12:30",
-    amount: 210_000,
-    status: "Hoàn tất",
-  },
-  {
-    id: "#28488",
-    table: "Mang đi",
-    paymentMethod: "QR MoMo",
-    timestamp: "12:15",
-    amount: 85_000,
-    status: "Hoàn tất",
-  },
-];
-
 /* =========================================================
  * CONSTANTS
  * ========================================================= */
-
 const PAYMENT_METHODS: Array<{
-  id: PaymentMethod;
-  label: string;
-  icon: React.ElementType;
+    id: PaymentMethod;
+    label: string;
+    icon: React.ElementType;
 }> = [
-  {
-    id: "cash",
-    label: "Tiền mặt",
-    icon: Banknote,
-  },
-  {
-    id: "card",
-    label: "Thẻ ngân hàng",
-    icon: CreditCard,
-  },
-  {
-    id: "ewallet",
-    label: "Ví điện tử",
-    icon: WalletCards,
-  },
-  {
-    id: "qr",
-    label: "Chuyển khoản QR",
-    icon: QrCode,
-  },
+    {
+        id: "cash",
+        label: "Tiền mặt",
+        icon: Banknote,
+    },
+    {
+        id: "bank_transfer",
+        label: "Chuyển khoản",
+        icon: CreditCard,
+    },
+    {
+        id: "momo",
+        label: "Ví MoMo",
+        icon: WalletCards,
+    },
+    {
+        id: "vnpay",
+        label: "VNPay / QR",
+        icon: QrCode,
+    },
 ];
-
 const QUICK_CASH_OPTIONS = [
-  {
-    id: "exact",
-    label: "Chính xác",
-    amount: 340_200,
-  },
-  {
-    id: "350",
-    label: "350,000",
-    amount: 350_000,
-  },
-  {
-    id: "400",
-    label: "400,000",
-    amount: 400_000,
-  },
-  {
-    id: "500",
-    label: "500,000",
-    amount: 500_000,
-  },
+    {
+        id: "exact",
+        label: "Chính xác",
+        amount: 0,
+    },
+    {
+        id: "350",
+        label: "350,000",
+        amount: 350000,
+    },
+    {
+        id: "400",
+        label: "400,000",
+        amount: 400000,
+    },
+    {
+        id: "500",
+        label: "500,000",
+        amount: 500000,
+    },
 ];
-
 /* =========================================================
  * HELPERS
  * ========================================================= */
-
 const formatCurrency = (value: number) => {
-  return `${new Intl.NumberFormat("vi-VN").format(value)} đ`;
+    return `${new Intl.NumberFormat("vi-VN").format(value)}đ`;
 };
-
 const formatShortCurrency = (value: number) => {
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(value % 1_000_000 === 0 ? 0 : 2)}M`;
-  }
-
-  return `${Math.round(value / 1_000)}K`;
+    if (value >= 1000000) {
+        return `${(value / 1000000).toFixed(value % 1000000 === 0 ? 0 : 2)}M`;
+    }
+    return `${Math.round(value / 1000)}K`;
 };
-
 /* =========================================================
  * COMPONENT
  * ========================================================= */
-
 const CashierCheckoutPage: React.FC = () => {
-  /* -------------------------------------------------------
-   * STATE
-   * ------------------------------------------------------- */
-
-  const [selectedPayment, setSelectedPayment] =
-    useState<PaymentMethod>("cash");
-
-  const [selectedCash, setSelectedCash] = useState("350");
-
-  const [discountCode, setDiscountCode] = useState("");
-  const [appliedDiscountCode, setAppliedDiscountCode] =
-    useState("");
-
-  const [discountAmount, setDiscountAmount] = useState(0);
-
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const [selectedPendingOrder, setSelectedPendingOrder] =
-    useState<string | null>(null);
-
-  const [notificationCount] = useState(3);
-
-  /* -------------------------------------------------------
-   * CALCULATIONS
-   * ------------------------------------------------------- */
-
-  const subtotal = useMemo(() => {
-    return orderItems.reduce((total, item) => total + item.price, 0);
-  }, []);
-
-  const vat = useMemo(() => {
-    return Math.round((subtotal - discountAmount) * 0.08);
-  }, [subtotal, discountAmount]);
-
-  const total = useMemo(() => {
-    return subtotal - discountAmount + vat;
-  }, [subtotal, discountAmount, vat]);
-
-  const selectedCashAmount =
-    QUICK_CASH_OPTIONS.find(
-      (option) => option.id === selectedCash,
-    )?.amount ?? total;
-
-  /* -------------------------------------------------------
-   * HANDLERS
-   * ------------------------------------------------------- */
-
-  const handleApplyDiscount = () => {
-    const code = discountCode.trim().toUpperCase();
-
-    if (!code) {
-      setAppliedDiscountCode("");
-      setDiscountAmount(0);
-      return;
-    }
-
-    /**
-     * Demo promotion rules.
-     *
-     * GIAM10  => 10% subtotal
-     * GIAM20  => 20.000đ
-     */
-    if (code === "GIAM10") {
-      setDiscountAmount(Math.round(subtotal * 0.1));
-      setAppliedDiscountCode(code);
-      return;
-    }
-
-    if (code === "GIAM20") {
-      setDiscountAmount(20_000);
-      setAppliedDiscountCode(code);
-      return;
-    }
-
-    setDiscountAmount(0);
-    setAppliedDiscountCode("");
-  };
-
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-
-    window.setTimeout(() => {
-      setIsRefreshing(false);
-    }, 700);
-  };
-
-  const handlePayment = () => {
-    const paymentLabel =
-      PAYMENT_METHODS.find(
-        (method) => method.id === selectedPayment,
-      )?.label ?? "Thanh toán";
-
-    console.log("Processing payment:", {
-      method: paymentLabel,
-      amount: selectedCashAmount,
-      total,
-      discountCode: appliedDiscountCode,
+    const navigate = useNavigate();
+    const location = useLocation();
+    const tablesQuery = useQuery({
+        queryKey: queryKeys.cashier.tables(),
+        queryFn: cashierService.getTables,
+        staleTime: 60000,
     });
-
-    alert(
-      `Thanh toán ${formatCurrency(
-        selectedCashAmount,
-      )} bằng ${paymentLabel}`,
-    );
-  };
-
-  /* =========================================================
-   * RENDER
-   * ========================================================= */
-
-  return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800">
+    const transactionsQuery = useQuery({
+        queryKey: queryKeys.cashier.transactionPage({ page: 1, limit: 5 }),
+        queryFn: () => cashierService.getTransactions({ page: 1, limit: 5 }),
+        staleTime: 60000,
+    });
+    const revenueQuery = useQuery({
+        queryKey: queryKeys.analytics.revenue({ period: "day" }),
+        queryFn: () => reportsService.getRevenueSummary({ period: "day" }),
+        staleTime: 60000,
+    });
+    const queryClient = useQueryClient();
+    const tableData = useMemo(() => tablesQuery.data ?? [], [tablesQuery.data]);
+    const pendingOrders = useMemo<PendingOrder[]>(() => {
+        return tableData
+            .filter((table) => table.status === "occupied" &&
+            ((table.orderId && table.orderId.length > 0) || (table.orderItems?.length ?? 0) > 0))
+            .map((table) => ({
+            id: table.orderId ?? table.id,
+            table: table.name,
+            elapsed: table.timer ?? "Now",
+            amount: Number(table.unpaidBill?.finalAmount ?? table.total ?? 0),
+        }));
+    }, [tableData]);
+    const transactions = useMemo<Transaction[]>(() => {
+        return (transactionsQuery.data?.data ?? []).map((item) => ({
+            id: item.transactionCode ?? item.id,
+            table: item.tableName,
+            paymentMethod: item.paymentMethod,
+            timestamp: `${item.date} ${item.time}`,
+            amount: item.amount,
+            status: item.status === "REFUNDED" ? "Refunded" : item.status === "SUCCESS" ? "Completed" : item.status,
+        }));
+    }, [transactionsQuery.data]);
+    /* -------------------------------------------------------
+     * STATE
+     * ------------------------------------------------------- */
+    const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>("cash");
+    const [selectedCash, setSelectedCash] = useState("exact");
+    const [discountCode, setDiscountCode] = useState("");
+    const [appliedDiscountCode, setAppliedDiscountCode] = useState("");
+    const [discountAmount, setDiscountAmount] = useState(0);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const [selectedPendingOrder, setSelectedPendingOrder] = useState<string | null>(null);
+    const selectedOrderData = useMemo(() => pendingOrders.find((order) => order.id === selectedPendingOrder) ??
+        pendingOrders[0] ?? {
+        id: "",
+        table: "No open orders",
+        elapsed: "",
+        amount: 0,
+    }, [pendingOrders, selectedPendingOrder]);
+    const selectedTable = useMemo(() => tableData.find((table) => table.orderId === selectedPendingOrder ||
+        table.id === selectedPendingOrder ||
+        table.name === selectedOrderData.table) ?? null, [selectedOrderData.table, selectedPendingOrder, tableData]);
+    const orderItems = useMemo<OrderItem[]>(() => {
+        return (selectedTable?.orderItems ?? []).map((item) => ({
+            ...item,
+            id: `${selectedTable?.id ?? item.id}-${item.id}`,
+            name: `${item.name}${selectedTable?.name ? ` - ${selectedTable.name}` : ""}`,
+            quantity: Number(item.quantity ?? 0),
+            price: Number(item.quantity ?? 0) * Number(item.price ?? 0),
+        }));
+    }, [selectedTable]);
+    /* -------------------------------------------------------
+     * CALCULATIONS
+     * ------------------------------------------------------- */
+    const subtotal = useMemo(() => {
+        return orderItems.reduce((total, item) => total + item.price, 0);
+    }, [orderItems]);
+    const total = useMemo(() => {
+        return selectedTable?.unpaidBill?.finalAmount ?? subtotal - discountAmount;
+    }, [selectedTable, subtotal, discountAmount]);
+    const selectedCashAmount = (selectedCash === "exact" ? total : QUICK_CASH_OPTIONS.find((option) => option.id === selectedCash)?.amount) ?? total;
+    /* -------------------------------------------------------
+     * HANDLERS
+     * ------------------------------------------------------- */
+    const handleApplyDiscount = async () => {
+        const code = discountCode.trim().toUpperCase();
+        if (!code) {
+            setAppliedDiscountCode("");
+            setDiscountAmount(0);
+            return;
+        }
+        if (!selectedTable || subtotal <= 0) {
+            alert("Select a table with an open order before applying a promotion.");
+            return;
+        }
+        if (selectedTable.unpaidBill) {
+            alert("This bill already exists. Its promotion and total cannot be changed.");
+            return;
+        }
+        try {
+            const validation = await cashierService.validatePromotion({ code, subtotal });
+            setDiscountAmount(validation.discountAmount);
+            setAppliedDiscountCode(code);
+        }
+        catch (error) {
+            setDiscountAmount(0);
+            setAppliedDiscountCode("");
+            alert(error instanceof Error ? error.message : "The promotion could not be validated.");
+        }
+    };
+    const handleRefresh = () => {
+        setIsRefreshing(true);
+        void Promise.all([tablesQuery.refetch(), revenueQuery.refetch(), transactionsQuery.refetch()]).finally(() => setIsRefreshing(false));
+    };
+    const handlePayment = async () => {
+        if (isProcessingPayment) return;
+        if (CASHIER_DEV_READ_ONLY) {
+            alert("Payment is disabled in development read-only preview mode.");
+            return;
+        }
+        if (!selectedTable)
+            return;
+        const paymentLabel = PAYMENT_METHODS.find((method) => method.id === selectedPayment)?.label ?? "Payment";
+        setIsProcessingPayment(true);
+        try {
+            const tableOrder = await cashierService.getTableOrder(selectedTable.id);
+            const sessionId = tableOrder.diningSession?.id;
+            if (!sessionId)
+                throw new Error("This table has no active dining session.");
+            const existingBill = tableOrder.bills.find((item) => item.status === "UNPAID");
+            if (
+                existingBill &&
+                appliedDiscountCode &&
+                existingBill.promotionCode?.toUpperCase() !== appliedDiscountCode.toUpperCase()
+            ) {
+                throw new Error("An unpaid bill already exists with a different promotion. Remove the code to pay that bill.");
+            }
+            const bill = existingBill ??
+                await cashierService.createBill(sessionId, { promotionCode: appliedDiscountCode || undefined });
+            const amountPaid = selectedPayment === "cash"
+                ? selectedCash === "exact" ? bill.finalAmount : selectedCashAmount
+                : bill.finalAmount;
+            if (selectedPayment === "cash" && amountPaid < bill.finalAmount) {
+                throw new Error("The cash amount must cover the final bill total.");
+            }
+            await cashierService.createPayment({
+                billId: bill.id,
+                paymentMethod: selectedPayment.toUpperCase(),
+                amountPaid,
+            });
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: queryKeys.cashier.tables() }),
+                queryClient.invalidateQueries({ queryKey: queryKeys.analytics.revenue() }),
+                queryClient.invalidateQueries({ queryKey: ["analytics", "end-of-day"] }),
+                queryClient.invalidateQueries({ queryKey: ["cashier", "transactions"] }),
+                queryClient.invalidateQueries({ queryKey: ["cashier", "audit-logs"] }),
+            ]);
+            alert(`Payment ${bill.billCode} recorded using ${paymentLabel}.`);
+        }
+        catch (error) {
+            alert(error instanceof Error ? error.message : "Payment could not be completed.");
+        } finally {
+            setIsProcessingPayment(false);
+        }
+    };
+    /* =========================================================
+     * RENDER
+     * ========================================================= */
+    return (<div className="min-h-screen bg-[#f8fafc] text-slate-800">
       <div className="flex min-h-screen">
         {/* ===================================================
          * SIDEBAR
@@ -352,52 +296,28 @@ const CashierCheckoutPage: React.FC = () => {
 
           {/* New Order */}
           <div className="px-4 pt-5">
-            <button
-              type="button"
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#f35b25] text-sm font-semibold text-white shadow-sm transition hover:bg-[#d94b1a] active:scale-[0.98]"
-            >
-              <Plus size={17} strokeWidth={2.5} />
+            <button type="button" onClick={() => navigate("/cashier/tables")} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#f35b25] text-sm font-semibold text-white shadow-sm transition hover:bg-[#d94b1a] active:scale-[0.98]">
+              <Plus size={17} strokeWidth={2.5}/>
               New Order
             </button>
           </div>
 
           {/* Navigation */}
           <nav className="mt-5 flex-1 px-3">
-            <SidebarItem
-              icon={ShoppingBag}
-              label="Sales"
-              active
-            />
-
-            <SidebarItem
-              icon={Receipt}
-              label="Orders"
-            />
-
-            <SidebarItem
-              icon={History}
-              label="History"
-            />
-
-            <SidebarItem
-              icon={RotateCcw}
-              label="Refunds"
-            />
-
-            <SidebarItem
-              icon={Settings}
-              label="Settings"
-            />
+            <SidebarItem icon={ShoppingBag} label="Sales" to="/cashier" active={location.pathname === "/cashier"}/>
+            <SidebarItem icon={Receipt} label="Orders" to="/cashier/pending-checkout" active={location.pathname === "/cashier/pending-checkout"}/>
+            <SidebarItem icon={Banknote} label="Table Status" to="/cashier/tables" active={location.pathname === "/cashier/tables"}/>
+            <SidebarItem icon={History} label="History & Refunds" to="/cashier/history-refund" active={location.pathname === "/cashier/history-refund"}/>
+            <SidebarItem icon={RotateCcw} label="Revenue & Audit" to="/cashier/revenue-audit-log" active={location.pathname === "/cashier/revenue-audit-log"}/>
+            <SidebarItem icon={Receipt} label="End of Day" to="/cashier/end-of-day" active={location.pathname === "/cashier/end-of-day"}/>
+            <SidebarItem icon={Settings} label="Settings" to="/cashier/settings" active={location.pathname === "/cashier/settings"}/>
           </nav>
 
           {/* Support */}
           <div className="border-t border-white/5 p-3">
-            <button
-              type="button"
-              className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm text-slate-400 transition hover:bg-white/5 hover:text-white"
-            >
-              <LifeBuoy size={17} />
-              Support
+            <button type="button" onClick={() => navigate("/cashier/settings")} className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm text-slate-400 transition hover:bg-white/5 hover:text-white">
+              <LifeBuoy size={17}/>
+              Help & Settings
             </button>
           </div>
         </aside>
@@ -407,9 +327,24 @@ const CashierCheckoutPage: React.FC = () => {
          * =================================================== */}
 
         <main className="min-w-0 flex-1">
+          {(tablesQuery.isError || revenueQuery.isError) && (
+            <div role="alert" className="m-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <span>{tablesQuery.isError ? "Could not load tables." : "Could not load daily revenue."}</span>
+              <button type="button" onClick={() => void Promise.all([tablesQuery.refetch(), revenueQuery.refetch()])} className="font-bold underline">Retry</button>
+            </div>
+          )}
+          {transactionsQuery.isError && (
+            <div role="alert" className="mx-4 mb-3 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <span>Could not load recent cashier transactions.</span>
+              <button type="button" onClick={() => void transactionsQuery.refetch()} className="font-bold underline">Retry</button>
+            </div>
+          )}
+          {!tablesQuery.isLoading && !tablesQuery.isError && pendingOrders.length === 0 && (
+            <div role="status" className="mx-4 mt-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">No open table orders.</div>
+          )}
           {/* =================================================
-           * HEADER
-           * ================================================= */}
+         * HEADER
+         * ================================================= */}
 
           <header className="flex min-h-[82px] flex-wrap items-center gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6 xl:px-8">
             {/* Mobile brand */}
@@ -429,82 +364,48 @@ const CashierCheckoutPage: React.FC = () => {
 
             {/* Search */}
             <div className="relative order-last w-full sm:order-none sm:ml-3 sm:max-w-[310px]">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
 
-              <input
-                type="text"
-                placeholder="Tìm kiếm đơn hàng..."
-                className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#d9531e] focus:bg-white focus:ring-2 focus:ring-[#d9531e]/10"
-              />
+              <input type="text" placeholder="Tìm kiếm đơn hàng..." className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#d9531e] focus:bg-white focus:ring-2 focus:ring-[#d9531e]/10"/>
             </div>
 
             {/* Header actions */}
             <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                className="hidden h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 md:flex"
-              >
-                <Split size={15} />
+              <button type="button" onClick={() => navigate(`/cashier/split-bill${selectedTable ? `?tableId=${encodeURIComponent(selectedTable.id)}` : ""}`)} className="hidden h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 md:flex">
+                <Split size={15}/>
                 Split Bill
               </button>
 
-              <button
-                type="button"
-                className="hidden h-10 items-center gap-2 rounded-lg bg-[#c2410c] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a83a0b] md:flex"
-                onClick={() => setSelectedCash("exact")}
-              >
+              <button type="button" className="hidden h-10 items-center gap-2 rounded-lg bg-[#c2410c] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#a83a0b] md:flex" onClick={() => setSelectedCash("exact")}>
                 Quick Cash
               </button>
 
-              <button
-                type="button"
-                className="relative flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
-              >
-                <Bell size={18} />
+              <button type="button" onClick={() => window.alert("Cashier notifications are unavailable because the backend does not expose a notifications API.")} className="relative flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800" title="Notifications">
+                <Bell size={18}/>
 
-                {notificationCount > 0 && (
-                  <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#c2410c] px-1 text-[9px] font-bold text-white">
-                    {notificationCount}
-                  </span>
-                )}
               </button>
 
-              <button
-                type="button"
-                onClick={handleRefresh}
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
-              >
-                <RefreshCw
-                  size={17}
-                  className={
-                    isRefreshing
-                      ? "animate-spin"
-                      : ""
-                  }
-                />
+              <button type="button" onClick={handleRefresh} className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800">
+                <RefreshCw size={17} className={isRefreshing
+            ? "animate-spin"
+            : ""}/>
               </button>
 
-              <button
-                type="button"
-                className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-white"
-              >
+              <button type="button" onClick={() => navigate("/cashier/settings")} aria-label="Open cashier settings" className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-white">
                 TL
               </button>
             </div>
           </header>
 
           {/* =================================================
-           * CONTENT
-           * ================================================= */}
+         * CONTENT
+         * ================================================= */}
 
           <div className="p-4 sm:p-5 xl:p-6">
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(310px,0.95fr)_minmax(430px,1.25fr)_280px]">
               {/* =================================================
-               * COLUMN 1 - ORDER DETAILS
-               * ================================================= */}
+         * COLUMN 1 - ORDER DETAILS
+         * ================================================= */}
 
               <section className="flex min-h-[720px] flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm">
                 {/* Order header */}
@@ -513,24 +414,21 @@ const CashierCheckoutPage: React.FC = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-lg font-bold text-slate-900">
-                          Bàn 14
+                          {selectedTable?.name ?? "No table selected"}
                         </h3>
 
                         <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-600">
-                          Đang phục vụ
+                          {selectedTable?.status === "occupied" ? "Đang phục vụ" : selectedTable?.status === "reserved" ? "Đã đặt trước" : selectedTable?.status === "dirty" ? "Cần dọn dẹp" : selectedTable ? "Bàn trống" : "Không có bàn đang phục vụ"}
                         </span>
                       </div>
 
                       <p className="mt-1 text-xs text-slate-400">
-                        Hóa đơn #28491 • 2 Khách
+                        {selectedOrderData.id ? `Hóa đơn ${selectedOrderData.id}` : "Chưa có hóa đơn"} • {selectedTable?.guests ?? 0} Khách
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      className="text-slate-400 transition hover:text-slate-700"
-                    >
-                      <MoreHorizontal size={18} />
+                    <button type="button" className="text-slate-400 transition hover:text-slate-700">
+                      <MoreHorizontal size={18}/>
                     </button>
                   </div>
                 </div>
@@ -544,21 +442,15 @@ const CashierCheckoutPage: React.FC = () => {
                   </div>
 
                   <div className="divide-y divide-slate-100">
-                    {orderItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="grid grid-cols-[1fr_45px_85px] gap-2 px-5 py-4"
-                      >
+                    {orderItems.map((item) => (<div key={item.id} className="grid grid-cols-[1fr_45px_85px] gap-2 px-5 py-4">
                         <div className="min-w-0">
                           <p className="truncate text-xs font-medium text-slate-700">
                             {item.name}
                           </p>
 
-                          {item.note && (
-                            <p className="mt-1 text-[10px] text-slate-400">
+                          {item.note && (<p className="mt-1 text-[10px] text-slate-400">
                               ({item.note})
-                            </p>
-                          )}
+                            </p>)}
                         </div>
 
                         <span className="text-center text-xs text-slate-600">
@@ -566,55 +458,33 @@ const CashierCheckoutPage: React.FC = () => {
                         </span>
 
                         <span className="text-right text-xs font-medium text-slate-700">
-                          {new Intl.NumberFormat("vi-VN").format(
-                            item.price,
-                          )}
+                          {new Intl.NumberFormat("vi-VN").format(item.price)}
                         </span>
-                      </div>
-                    ))}
+                      </div>))}
                   </div>
                 </div>
 
                 {/* Price summary */}
                 <div className="border-t border-slate-100 p-5">
                   <div className="space-y-3">
-                    <PriceRow
-                      label="Tạm tính"
-                      value={formatCurrency(subtotal)}
-                    />
+                    <PriceRow label="Tạm tính" value={formatCurrency(subtotal)}/>
 
-                    <PriceRow
-                      label="VAT (8%)"
-                      value={formatCurrency(vat)}
-                    />
+
 
                     {/* Discount */}
                     <div className="flex gap-2">
-                      <input
-                        value={discountCode}
-                        onChange={(event) =>
-                          setDiscountCode(event.target.value)
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            handleApplyDiscount();
-                          }
-                        }}
-                        placeholder="Mã giảm giá..."
-                        className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none transition focus:border-[#d9531e] focus:ring-2 focus:ring-[#d9531e]/10"
-                      />
+                      <input value={discountCode} onChange={(event) => setDiscountCode(event.target.value)} onKeyDown={(event) => {
+            if (event.key === "Enter") {
+                handleApplyDiscount();
+            }
+        }} placeholder="Mã giảm giá..." className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none transition focus:border-[#d9531e] focus:ring-2 focus:ring-[#d9531e]/10"/>
 
-                      <button
-                        type="button"
-                        onClick={handleApplyDiscount}
-                        className="h-9 shrink-0 rounded-lg bg-slate-100 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
-                      >
+                      <button type="button" onClick={handleApplyDiscount} className="h-9 shrink-0 rounded-lg bg-slate-100 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-200">
                         Áp dụng
                       </button>
                     </div>
 
-                    {appliedDiscountCode && (
-                      <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-xs">
+                    {appliedDiscountCode && (<div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-xs">
                         <span className="font-medium text-emerald-700">
                           {appliedDiscountCode}
                         </span>
@@ -622,8 +492,7 @@ const CashierCheckoutPage: React.FC = () => {
                         <span className="font-semibold text-emerald-600">
                           -{formatCurrency(discountAmount)}
                         </span>
-                      </div>
-                    )}
+                      </div>)}
                   </div>
 
                   {/* Total */}
@@ -640,27 +509,21 @@ const CashierCheckoutPage: React.FC = () => {
 
                 {/* Bottom actions */}
                 <div className="grid grid-cols-2 gap-2 border-t border-slate-100 p-4">
-                  <button
-                    type="button"
-                    className="flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98]"
-                  >
-                    <Split size={14} />
+                  <button type="button" onClick={() => navigate(`/cashier/split-bill${selectedTable ? `?tableId=${encodeURIComponent(selectedTable.id)}` : ""}`)} className="flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98]">
+                    <Split size={14}/>
                     Tách Bill
                   </button>
 
-                  <button
-                    type="button"
-                    className="flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98]"
-                  >
-                    <Plus size={14} />
+                  <button type="button" onClick={() => navigate("/cashier/merge-bill")} className="flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.98]">
+                    <Plus size={14}/>
                     Gộp Bill
                   </button>
                 </div>
               </section>
 
               {/* =================================================
-               * COLUMN 2 - PAYMENT
-               * ================================================= */}
+         * COLUMN 2 - PAYMENT
+         * ================================================= */}
 
               <section className="flex min-h-[720px] flex-col gap-4">
                 {/* Payment amount */}
@@ -672,113 +535,76 @@ const CashierCheckoutPage: React.FC = () => {
                       </p>
 
                       <h3 className="mt-1 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-                        {new Intl.NumberFormat("vi-VN").format(
-                          selectedCashAmount,
-                        )}
+                        {new Intl.NumberFormat("vi-VN").format(selectedCashAmount)}
                         <span className="ml-1 text-xl font-semibold text-slate-500">
                           đ
                         </span>
                       </h3>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCash("exact")}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                      aria-label="Reset payment amount"
-                    >
-                      <X size={15} />
+                    <button type="button" onClick={() => setSelectedCash("exact")} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Reset payment amount">
+                      <X size={15}/>
                     </button>
                   </div>
 
                   {/* Quick cash */}
                   <div className="mt-5 grid grid-cols-4 gap-2">
                     {QUICK_CASH_OPTIONS.map((option) => {
-                      const active =
-                        selectedCash === option.id;
-
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() =>
-                            setSelectedCash(option.id)
-                          }
-                          className={[
-                            "h-9 rounded-lg border text-[10px] font-semibold transition sm:text-xs",
-                            active
-                              ? "border-[#d9531e] bg-[#fff7f3] text-[#c2410c] shadow-sm"
-                              : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50",
-                          ].join(" ")}
-                        >
+            const active = selectedCash === option.id;
+            return (<button key={option.id} type="button" onClick={() => setSelectedCash(option.id)} className={[
+                    "h-9 rounded-lg border text-[10px] font-semibold transition sm:text-xs",
+                    active
+                        ? "border-[#d9531e] bg-[#fff7f3] text-[#c2410c] shadow-sm"
+                        : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50",
+                ].join(" ")}>
                           {option.label}
-                        </button>
-                      );
-                    })}
+                        </button>);
+        })}
                   </div>
                 </div>
 
                 {/* Payment methods */}
                 <div className="grid flex-1 grid-cols-2 gap-4">
                   {PAYMENT_METHODS.map((method) => {
-                    const Icon = method.icon;
+            const Icon = method.icon;
+            const active = selectedPayment === method.id;
+            return (<button key={method.id} type="button" onClick={() => setSelectedPayment(method.id)} className={[
+                    "group relative flex min-h-[180px] flex-col items-center justify-center rounded-2xl border bg-white p-5 transition duration-200",
+                    "active:scale-[0.98]",
+                    active
+                        ? "border-[#d9531e] bg-[#fffaf7] shadow-md ring-2 ring-[#d9531e]/10"
+                        : "border-slate-200/70 shadow-sm hover:-translate-y-0.5 hover:border-[#d9531e]/40 hover:shadow-md",
+                ].join(" ")}>
+                        {active && (<span className="absolute right-4 top-4 h-2 w-2 rounded-full bg-[#c2410c]"/>)}
 
-                    const active =
-                      selectedPayment === method.id;
-
-                    return (
-                      <button
-                        key={method.id}
-                        type="button"
-                        onClick={() =>
-                          setSelectedPayment(method.id)
-                        }
-                        className={[
-                          "group relative flex min-h-[180px] flex-col items-center justify-center rounded-2xl border bg-white p-5 transition duration-200",
-                          "active:scale-[0.98]",
-                          active
-                            ? "border-[#d9531e] bg-[#fffaf7] shadow-md ring-2 ring-[#d9531e]/10"
-                            : "border-slate-200/70 shadow-sm hover:-translate-y-0.5 hover:border-[#d9531e]/40 hover:shadow-md",
-                        ].join(" ")}
-                      >
-                        {active && (
-                          <span className="absolute right-4 top-4 h-2 w-2 rounded-full bg-[#c2410c]" />
-                        )}
-
-                        <div
-                          className={[
-                            "flex h-11 w-11 items-center justify-center rounded-xl transition",
-                            active
-                              ? "bg-[#fff0e9] text-[#c2410c]"
-                              : "bg-slate-50 text-[#c2410c] group-hover:bg-[#fff0e9]",
-                          ].join(" ")}
-                        >
-                          <Icon
-                            size={23}
-                            strokeWidth={1.8}
-                          />
+                        <div className={[
+                    "flex h-11 w-11 items-center justify-center rounded-xl transition",
+                    active
+                        ? "bg-[#fff0e9] text-[#c2410c]"
+                        : "bg-slate-50 text-[#c2410c] group-hover:bg-[#fff0e9]",
+                ].join(" ")}>
+                          <Icon size={23} strokeWidth={1.8}/>
                         </div>
 
-                        <span
-                          className={[
-                            "mt-4 text-xs font-semibold",
-                            active
-                              ? "text-[#c2410c]"
-                              : "text-slate-600",
-                          ].join(" ")}
-                        >
+                        <span className={[
+                    "mt-4 text-xs font-semibold",
+                    active
+                        ? "text-[#c2410c]"
+                        : "text-slate-600",
+                ].join(" ")}>
                           {method.label}
                         </span>
 
-                        {active && (
-                          <span className="mt-1 text-[10px] text-slate-400">
+                        {active && (<span className="mt-1 text-[10px] text-slate-400">
                             Đã chọn
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
+                          </span>)}
+                      </button>);
+        })}
                 </div>
+
+                <p className="text-center text-[10px] text-slate-500">
+                  Chỉ ghi nhận giao dịch trong ROMS; không kết nối ngân hàng, ví điện tử hoặc cổng QR.
+                </p>
 
                 {/* Payment summary */}
                 <div className="rounded-2xl border border-[#f4d9ce] bg-[#fff3ed] p-5 shadow-sm">
@@ -793,34 +619,26 @@ const CashierCheckoutPage: React.FC = () => {
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handlePayment}
-                      className="rounded-xl bg-[#c2410c] px-5 py-3 text-xs font-bold text-white shadow-sm transition hover:bg-[#a83a0b] active:scale-[0.98]"
-                    >
-                      Thanh toán
+                    <button type="button" onClick={handlePayment} disabled={CASHIER_DEV_READ_ONLY || isProcessingPayment || !selectedTable} className="rounded-xl bg-[#c2410c] px-5 py-3 text-xs font-bold text-white shadow-sm transition hover:bg-[#a83a0b] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50">
+                      {isProcessingPayment ? "Đang xử lý…" : "Thanh toán"}
                     </button>
                   </div>
 
-                  {selectedCashAmount > total && (
-                    <div className="mt-3 flex items-center justify-between border-t border-[#efd0c3] pt-3 text-xs">
+                  {selectedCashAmount > total && (<div className="mt-3 flex items-center justify-between border-t border-[#efd0c3] pt-3 text-xs">
                       <span className="text-[#a96850]">
                         Tiền thừa
                       </span>
 
                       <span className="font-bold text-[#c2410c]">
-                        {formatCurrency(
-                          selectedCashAmount - total,
-                        )}
+                        {formatCurrency(selectedCashAmount - total)}
                       </span>
-                    </div>
-                  )}
+                    </div>)}
                 </div>
               </section>
 
               {/* =================================================
-               * COLUMN 3 - QUEUE & HISTORY
-               * ================================================= */}
+         * COLUMN 3 - QUEUE & HISTORY
+         * ================================================= */}
 
               <aside className="flex min-h-[720px] flex-col gap-4">
                 {/* Waiting payment */}
@@ -836,33 +654,20 @@ const CashierCheckoutPage: React.FC = () => {
                       </span>
                     </div>
 
-                    <button
-                      type="button"
-                      className="text-slate-400 hover:text-slate-700"
-                    >
-                      <MoreHorizontal size={17} />
+                    <button type="button" className="text-slate-400 hover:text-slate-700">
+                      <MoreHorizontal size={17}/>
                     </button>
                   </div>
 
                   <div className="divide-y divide-slate-100">
                     {pendingOrders.map((order) => {
-                      const active =
-                        selectedPendingOrder === order.id;
-
-                      return (
-                        <button
-                          key={order.id}
-                          type="button"
-                          onClick={() =>
-                            setSelectedPendingOrder(order.id)
-                          }
-                          className={[
-                            "w-full px-4 py-3 text-left transition",
-                            active
-                              ? "bg-[#fff8f4]"
-                              : "hover:bg-slate-50",
-                          ].join(" ")}
-                        >
+            const active = selectedPendingOrder === order.id;
+            return (<button key={order.id} type="button" onClick={() => setSelectedPendingOrder(order.id)} className={[
+                    "w-full px-4 py-3 text-left transition",
+                    active
+                        ? "bg-[#fff8f4]"
+                        : "hover:bg-slate-50",
+                ].join(" ")}>
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-xs font-semibold text-slate-700">
@@ -870,7 +675,7 @@ const CashierCheckoutPage: React.FC = () => {
                               </p>
 
                               <p className="mt-1 text-[10px] text-slate-400">
-                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-300 align-middle" />{" "}
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-300 align-middle"/>{" "}
                                 <span className="ml-1">
                                   {order.elapsed}
                                 </span>
@@ -878,14 +683,11 @@ const CashierCheckoutPage: React.FC = () => {
                             </div>
 
                             <span className="text-xs font-bold text-[#c2410c]">
-                              {formatShortCurrency(
-                                order.amount,
-                              )}
+                              {formatShortCurrency(order.amount)}
                             </span>
                           </div>
-                        </button>
-                      );
-                    })}
+                        </button>);
+        })}
                   </div>
                 </section>
 
@@ -896,20 +698,15 @@ const CashierCheckoutPage: React.FC = () => {
                       Lịch Sử Giao Dịch
                     </h3>
 
-                    <button
-                      type="button"
-                      className="text-slate-400 hover:text-slate-700"
-                    >
-                      <MoreHorizontal size={17} />
+                    <button type="button" className="text-slate-400 hover:text-slate-700">
+                      <MoreHorizontal size={17}/>
                     </button>
                   </div>
 
                   <div className="flex-1 divide-y divide-slate-100">
-                    {transactions.map((transaction) => (
-                      <div
-                        key={transaction.id}
-                        className="px-4 py-4"
-                      >
+                    {transactionsQuery.isLoading && <div role="status" className="px-4 py-4 text-xs text-slate-500">Loading transactions…</div>}
+                    {!transactionsQuery.isLoading && !transactionsQuery.isError && transactions.length === 0 && <div className="px-4 py-4 text-xs text-slate-500">No transactions found.</div>}
+                    {transactions.map((transaction) => (<div key={transaction.id} className="px-4 py-4">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="text-[10px] font-bold text-slate-800">
@@ -927,24 +724,18 @@ const CashierCheckoutPage: React.FC = () => {
 
                           <div className="shrink-0 text-right">
                             <p className="text-[10px] font-bold text-slate-700">
-                              {formatCurrency(
-                                transaction.amount,
-                              )}
+                              {formatCurrency(transaction.amount)}
                             </p>
 
-                            <p className="mt-1 text-[9px] text-emerald-500">
+                            <p className={`mt-1 text-[9px] ${transaction.status === "Refunded" ? "text-rose-500" : transaction.status === "Completed" ? "text-emerald-500" : "text-amber-600"}`}>
                               {transaction.status}
                             </p>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      </div>))}
                   </div>
 
-                  <button
-                    type="button"
-                    className="border-t border-slate-100 px-4 py-4 text-center text-[10px] font-semibold text-[#c2410c] transition hover:bg-[#fff8f4]"
-                  >
+                  <button type="button" onClick={() => navigate("/cashier/history-refund")} className="border-t border-slate-100 px-4 py-4 text-center text-[10px] font-semibold text-[#c2410c] transition hover:bg-[#fff8f4]">
                     Xem tất cả
                   </button>
                 </section>
@@ -953,78 +744,50 @@ const CashierCheckoutPage: React.FC = () => {
           </div>
         </main>
       </div>
-    </div>
-  );
+    </div>);
 };
-
 /* =========================================================
  * SIDEBAR ITEM
  * ========================================================= */
-
 interface SidebarItemProps {
-  icon: React.ElementType;
-  label: string;
-  active?: boolean;
+    icon: React.ElementType;
+    label: string;
+    to: string;
+    active?: boolean;
 }
+const SidebarItem: React.FC<SidebarItemProps> = ({ icon: Icon, label, to, active = false, }) => {
+    const navigate = useNavigate();
+    return (<button type="button" onClick={() => navigate(to)} aria-current={active ? "page" : undefined} className={[
+            "group relative mb-1 flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm transition",
+            active
+                ? "bg-white/10 text-white"
+                : "text-slate-400 hover:bg-white/5 hover:text-white",
+        ].join(" ")}>
+      {active && (<span className="absolute left-0 top-2.5 h-6 w-0.5 rounded-r-full bg-[#f35b25]"/>)}
 
-const SidebarItem: React.FC<SidebarItemProps> = ({
-  icon: Icon,
-  label,
-  active = false,
-}) => {
-  return (
-    <button
-      type="button"
-      className={[
-        "group relative mb-1 flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm transition",
-        active
-          ? "bg-white/10 text-white"
-          : "text-slate-400 hover:bg-white/5 hover:text-white",
-      ].join(" ")}
-    >
-      {active && (
-        <span className="absolute left-0 top-2.5 h-6 w-0.5 rounded-r-full bg-[#f35b25]" />
-      )}
-
-      <Icon
-        size={17}
-        strokeWidth={active ? 2.2 : 1.8}
-        className={
-          active
+      <Icon size={17} strokeWidth={active ? 2.2 : 1.8} className={active
             ? "text-[#f35b25]"
-            : "text-slate-400 group-hover:text-white"
-        }
-      />
+            : "text-slate-400 group-hover:text-white"}/>
 
       <span className={active ? "font-semibold" : "font-medium"}>
         {label}
       </span>
-    </button>
-  );
+    </button>);
 };
-
 /* =========================================================
  * PRICE ROW
  * ========================================================= */
-
 interface PriceRowProps {
-  label: string;
-  value: string;
+    label: string;
+    value: string;
 }
-
-const PriceRow: React.FC<PriceRowProps> = ({
-  label,
-  value,
-}) => {
-  return (
-    <div className="flex items-center justify-between text-xs">
+const PriceRow: React.FC<PriceRowProps> = ({ label, value, }) => {
+    return (<div className="flex items-center justify-between text-xs">
       <span className="text-slate-400">{label}</span>
 
       <span className="font-medium text-slate-600">
         {value}
       </span>
-    </div>
-  );
+    </div>);
 };
-
 export default CashierCheckoutPage;
