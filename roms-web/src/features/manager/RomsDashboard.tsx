@@ -34,10 +34,14 @@ import {
   Users,
   Utensils,
   WalletCards,
+  type LucideIcon,
 } from "lucide-react";
 import AiAnalyticsView from "../manager/analytics/AnalyticsDashboard";
 
-const navGroups = [
+type NavItem = readonly [string, LucideIcon];
+type NavGroup = { label: string; items: readonly NavItem[] };
+
+const navGroups: readonly NavGroup[] = [
   {
     label: "VẬN HÀNH",
     items: [
@@ -64,7 +68,7 @@ const navGroups = [
       ["Nhật ký hoạt động", FileClock],
     ],
   },
-] as const;
+];
 
 type ViewKey = (typeof navGroups)[number]["items"][number][0];
 
