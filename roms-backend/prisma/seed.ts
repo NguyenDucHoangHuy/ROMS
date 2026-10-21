@@ -13,7 +13,7 @@ import {
   PaymentMethod,
   PaymentStatus,
 } from '@prisma/client';
-import bcrypt from 'bcrypt';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -80,6 +80,9 @@ async function main() {
   const cashierRole = await prisma.role.findUniqueOrThrow({
     where: { name: RoleName.CASHIER },
   });
+  const managerRole = await prisma.role.findUniqueOrThrow({
+    where: { name: RoleName.MANAGER },
+  });
 
   const defaultPasswordHash = await bcrypt.hash('Admin@123', 10);
 
@@ -90,6 +93,17 @@ async function main() {
       email: 'admin@roms.com',
       passwordHash: defaultPasswordHash,
       roleId: adminRole.id,
+      isActive: true,
+    },
+  });
+
+  const managerUser = await prisma.user.create({
+    data: {
+      phone: '0905222333',
+      fullName: 'Trần Thị Lan',
+      email: 'lan.tran@roms.vn',
+      passwordHash: defaultPasswordHash,
+      roleId: managerRole.id,
       isActive: true,
     },
   });
@@ -1908,9 +1922,6 @@ async function main() {
     createdPerms[p.code] = perm.id;
   }
 
-  const managerRole = await prisma.role.findUniqueOrThrow({
-    where: { name: RoleName.MANAGER },
-  });
   const customerRole = await prisma.role.findUniqueOrThrow({
     where: { name: RoleName.CUSTOMER },
   });

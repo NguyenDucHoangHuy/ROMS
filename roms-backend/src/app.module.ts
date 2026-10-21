@@ -13,9 +13,11 @@ import { ReservationsModule } from './modules/reservations/reservations.module';
 import { DiningSessionsModule } from './modules/dining-sessions/dining-sessions.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { HrModule } from './modules/hr/hr.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -32,9 +34,11 @@ import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
     DiningSessionsModule,
     OrdersModule,
     InventoryModule,
+    SuppliersModule,
     BillingModule,
     HrModule,
     AuditLogsModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -7,10 +7,13 @@ export default function LoginPage() {
   const location = useLocation()
   const { login, register } = useAuth()
   
+  const redirectInfo = location.state as { redirectTo?: string; reservationDraft?: any; message?: string } | null
+  const redirectMessage = redirectInfo?.message
+
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login')
 
   const [formData, setFormData] = useState({
-    name: '',
+    fullName: '',
     phone: '',
     password: '',
     confirmPassword: '',
@@ -37,13 +40,26 @@ export default function LoginPage() {
 
     setIsSubmitting(true)
     try {
+      let user;
       if (activeTab === 'login') {
-        await login({ phone: formData.phone.replace(/[\s()-]/g, ''), password: formData.password })
+        user = await login({ phone: formData.phone.replace(/[\s()-]/g, ''), password: formData.password })
       } else {
-        await register({ name: formData.name.trim(), phone: formData.phone.replace(/[\s()-]/g, ''), password: formData.password })
+        user = await register({ fullName: formData.fullName.trim(), phone: formData.phone.replace(/[\s()-]/g, ''), password: formData.password })
       }
-      const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo || '/'
-      navigate(redirectTo, { replace: true })
+      
+      const requestedRedirect = redirectInfo?.redirectTo
+      const draft = redirectInfo?.reservationDraft
+      if (requestedRedirect) {
+        navigate(requestedRedirect, { replace: true, state: draft })
+      } else if (user?.role === 'ADMIN' || user?.role === 'MANAGER') {
+        navigate('/manager/overview', { replace: true })
+      } else if (user?.role === 'CASHIER') {
+        navigate('/cashier', { replace: true })
+      } else if (user?.role === 'CHEF') {
+        navigate('/kitchen', { replace: true })
+      } else {
+        navigate('/', { replace: true })
+      }
     } catch (error) {
       const responseMessage = (error as { response?: { data?: { message?: string | string[] } } })
         .response?.data?.message
@@ -112,15 +128,21 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {redirectMessage && (
+            <div className="rounded-2xl bg-orange-50 border border-orange-200 p-4 text-xs font-semibold text-orange-800">
+              {redirectMessage}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6 pt-4">
             {activeTab === 'register' && (
               <div className="relative">
                 <input
                   type="text"
-                  name="name"
+                  name="fullName"
                   required
                   placeholder="Full name"
-                  value={formData.name}
+                  value={formData.fullName}
                   onChange={handleChange}
                   className="w-full border-b border-stone-200 py-3 text-stone-800 placeholder-stone-300 focus:border-orange-500 focus:outline-none transition bg-transparent text-sm"
                 />
@@ -180,11 +202,57 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full sm:w-36 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg shadow-orange-500/30 transition transform hover:-translate-y-0.5 active:translate-y-0 text-sm"
+                className="w-full sm:w-36 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg shadow-orange-500/30 transition transform hover:-translate-y-0.5 active:translate-y-0 text-sm cursor-pointer"
               >
                 {isSubmitting ? 'Please wait…' : activeTab === 'login' ? 'Log in' : 'Register'}
               </button>
             </div>
+
+            {/* Quick Demo Accounts for Development / Testing */}
+            {activeTab === 'login' && (
+              <div className="mt-8 pt-6 border-t border-stone-100">
+                <p className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">
+                  Quick Demo Accounts
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        phone: '0905222333',
+                        password: 'Admin@123',
+                      }))
+                    }
+                    className="p-2.5 rounded-xl border border-stone-200 bg-stone-50/60 hover:bg-orange-50 hover:border-orange-300 text-stone-700 text-left transition cursor-pointer"
+                  >
+                    <div className="font-semibold text-stone-900 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      Manager
+                    </div>
+                    <div className="text-[11px] text-stone-500 truncate mt-0.5">Trần Thị Lan</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        phone: '0905123456',
+                        password: 'Admin@123',
+                      }))
+                    }
+                    className="p-2.5 rounded-xl border border-stone-200 bg-stone-50/60 hover:bg-orange-50 hover:border-orange-300 text-stone-700 text-left transition cursor-pointer"
+                  >
+                    <div className="font-semibold text-stone-900 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-orange-500" />
+                      Admin
+                    </div>
+                    <div className="text-[11px] text-stone-500 truncate mt-0.5">System Admin</div>
+                  </button>
+                </div>
+              </div>
+            )}
           </form>
         </div>
       </div>

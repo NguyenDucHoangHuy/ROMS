@@ -48,7 +48,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
    * @returns JwtPayload object → được gắn vào req.user cho toàn bộ request
    * @throws UnauthorizedException nếu user bị deactivate hoặc không tồn tại
    */
-  async validate(payload: JwtPayload & { iat: number; exp: number }): Promise<JwtPayload> {
+  async validate(
+    payload: JwtPayload & { iat: number; exp: number },
+  ): Promise<JwtPayload> {
     // Query DB nhẹ — chỉ lấy 2 field cần thiết để kiểm tra
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
@@ -68,7 +70,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     // Admin đã deactivate tài khoản (nhân viên nghỉ việc, mất thiết bị...)
     if (!user.isActive) {
-      throw new UnauthorizedException('Account has been deactivated. Please contact your manager.');
+      throw new UnauthorizedException(
+        'Account has been deactivated. Please contact your manager.',
+      );
     }
 
     // Return object này sẽ được gắn vào req.user — @CurrentUser() đọc từ đây
@@ -76,7 +80,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     return {
       sub: payload.sub,
       phone: payload.phone,
-      role: user.role.name,   // Lấy role từ DB thay vì payload — đề phòng role bị đổi
+      role: user.role.name, // Lấy role từ DB thay vì payload — đề phòng role bị đổi
       fullName: payload.fullName,
     };
   }

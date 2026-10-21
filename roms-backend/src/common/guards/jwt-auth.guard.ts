@@ -63,14 +63,12 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
    * Override handleRequest để tuỳ chỉnh message lỗi khi xác thực thất bại.
    * Passport mặc định trả về lỗi rất generic.
    */
-  handleRequest<TUser = any>(
-    err: any,
-    user: TUser,
-    info: any,
-  ): TUser {
+  handleRequest<TUser = any>(err: any, user: TUser, info: any): TUser {
     // Token sai chữ ký hoặc hết hạn
     if (info?.name === 'TokenExpiredError') {
-      throw new UnauthorizedException('Access token has expired. Please refresh your token.');
+      throw new UnauthorizedException(
+        'Access token has expired. Please refresh your token.',
+      );
     }
 
     // Token không hợp lệ (sai format, bị giả mạo)

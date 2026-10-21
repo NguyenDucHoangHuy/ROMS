@@ -44,7 +44,9 @@ export interface JwtPayload {
  */
 export const CurrentUser = createParamDecorator(
   (field: keyof JwtPayload | undefined, ctx: ExecutionContext) => {
-    const request = ctx.switchToHttp().getRequest<Request & { user: JwtPayload }>();
+    const request = ctx
+      .switchToHttp()
+      .getRequest<Request & { user: JwtPayload }>();
     const user = request.user;
 
     // Nếu truyền field cụ thể (vd: @CurrentUser('sub')) → trả về field đó

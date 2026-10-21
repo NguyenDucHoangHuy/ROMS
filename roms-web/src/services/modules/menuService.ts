@@ -36,6 +36,15 @@ export const menuService = {
       .patch<MenuItem>(`/menu-items/${id}/availability`, { isAvailable })
       .then((r) => r.data),
 
+  // Recipes (BOM)
+  updateRecipes: (
+    id: string,
+    recipes: { inventoryItemId: string; quantityRequired: number }[]
+  ) =>
+    apiClient
+      .put<MenuItem>(`/menu-items/${id}/recipes`, { recipes })
+      .then((r) => r.data),
+
   // Categories
   getCategories: () =>
     apiClient.get<unknown>('/categories').then((r) => toList<MenuCategory>(r.data)),

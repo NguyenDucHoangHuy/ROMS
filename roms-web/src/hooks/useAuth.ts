@@ -11,14 +11,29 @@ export function useAuth() {
 
   const login = async (payload: { phone?: string; email?: string; password: string }) => {
     const response = await authService.login(payload)
-    setAuth(response.user, response.tokens)
+    // Backend trả flat: { accessToken, refreshToken, user }
+    const tokens = { accessToken: response.accessToken, refreshToken: response.refreshToken }
+    setAuth(response.user, tokens)
     return response.user
   }
 
-  const register = async (payload: { name: string; phone: string; password: string }) => {
+  const register = async (payload: { fullName: string; phone: string; password: string }) => {
     const response = await authService.register(payload)
-    setAuth(response.user, response.tokens)
+    const tokens = { accessToken: response.accessToken, refreshToken: response.refreshToken }
+    setAuth(response.user, tokens)
     return response.user
+  }
+
+  const doLogout = async () => {
+    const currentTokens = useAuthStore.getState().tokens
+    if (currentTokens?.refreshToken) {
+      try {
+        await authService.logout(currentTokens.refreshToken)
+      } catch {
+        // Ignore logout errors, always clear local state
+      }
+    }
+    logout()
   }
 
   const hasRole = (role: UserRole | UserRole[]): boolean => {
@@ -33,9 +48,9 @@ export function useAuth() {
     user,
     tokens,
     isAuthenticated,
-    login, // 2. Bổ sung login vào object return
+    login,
     register,
-    logout,
+    logout: doLogout, // doLogout gọi API rồi mới xoá state local
     hasRole,
     role: user?.role as UserRole | undefined,
   }

@@ -57,7 +57,9 @@ export class KitchenGateway implements OnGatewayConnection {
   }) {
     this.server.to('kitchen').emit('order:item-updated', payload);
     if (payload.tableId) {
-      this.server.to(`table:${payload.tableId}`).emit('order:item-updated', payload);
+      this.server
+        .to(`table:${payload.tableId}`)
+        .emit('order:item-updated', payload);
     }
   }
 

@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Users, Calendar as CalendarIcon, Clock, Plus, Minus, ArrowRight, UtensilsCrossed, AlertCircle, ShoppingBag, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Users, Calendar as CalendarIcon, Clock, Plus, Minus, ArrowRight, UtensilsCrossed, AlertCircle, ShoppingBag, Trash2, ChevronLeft, ChevronRight, MapPin, Sparkles, X } from 'lucide-react'
 import { useCartStore } from '@/stores/cartStore'
 import { useAuth } from '@/hooks/useAuth'
 import Footer from '@/components/Footer'
+import { useClientLocale } from '@/contexts/ClientLocaleContext'
 
 // Hàm chuyển đổi phút sang định dạng "HH:mm"
 const minutesToTime = (totalMinutes: number): string => {
@@ -19,6 +20,7 @@ const timeToMinutes = (timeStr: string): number => {
 }
 
 export default function ReservationPage() {
+  const { t } = useClientLocale()
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
@@ -120,9 +122,24 @@ export default function ReservationPage() {
 
   const selectedTime = useMemo(() => minutesToTime(timeMinutes), [timeMinutes])
 
-  const [fullName, setFullName] = useState<string>(savedState.fullName || user?.name || '')
-  const [phone, setPhone] = useState<string>(savedState.phone || '')
+  const [fullName, setFullName] = useState<string>(savedState.fullName || (user as any)?.fullName || user?.name || '')
+  const [phone, setPhone] = useState<string>(savedState.phone || user?.phone || '')
   const [note, setNote] = useState<string>(savedState.note || '')
+  const [preferredFloor, setPreferredFloor] = useState<number | null>(savedState.preferredFloor ?? null)
+  const [seatingPreferences, setSeatingPreferences] = useState<string[]>(savedState.seatingPreferences || [])
+
+  const togglePreference = (pref: string) => {
+    setSeatingPreferences((prev) =>
+      prev.includes(pref) ? prev.filter((p) => p !== pref) : [...prev, pref]
+    )
+  }
+
+  useEffect(() => {
+    if (user) {
+      if (!fullName) setFullName((user as any)?.fullName || user?.name || '')
+      if (!phone) setPhone(user?.phone || '')
+    }
+  }, [user])
 
   useEffect(() => {
     if (localStorage.getItem('reservation_draft')) {
@@ -170,18 +187,32 @@ export default function ReservationPage() {
       selectedTime,
       fullName,
       phone,
+                  preferredFloor,
+                  seatingPreferences,
       note,
       preOrderTotal,
       items, // Các món đã đặt trước (rỗng nếu người dùng không chọn món)
     }
 
-    // if (!user) {
-    //   localStorage.setItem('reservation_draft', JSON.stringify(reservationData))
-    //   navigate('/login', {
-    //     state: { redirectTo: '/reservation', reservationDraft: reservationData },
-    //   })
-    //   return
-    // }
+
+
+
+
+
+
+
+
+    if (!user) {
+      localStorage.setItem('reservation_draft', JSON.stringify(reservationData))
+      navigate('/login', {
+        state: {
+          redirectTo: '/deposit',
+          reservationDraft: reservationData,
+          message: t('Vui lòng đăng nhập tài khoản để tiếp tục đặt bàn.', 'Please log in to your account to proceed with table reservation.'),
+        },
+      })
+      return
+    }
 
     navigate('/deposit', { state: reservationData })
   }
@@ -193,10 +224,10 @@ export default function ReservationPage() {
         {/* HEADER SECTION */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 pb-6 border-b border-stone-200">
           <div>
-            <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Step 1 of 3</span>
-            <h1 className="font-serif text-3xl font-bold sm:text-4xl text-stone-900 mt-1">Reserve & Pre-Order</h1>
+            <span className="text-xs font-bold uppercase tracking-widest text-orange-500">{t('Bước 1 / 3', 'Step 1 of 3')}</span>
+            <h1 className="font-serif text-3xl font-bold sm:text-4xl text-stone-900 mt-1">{t('Đặt bàn & Gọi trước', 'Reserve & Pre-Order')}</h1>
             <p className="mt-1 text-xs sm:text-sm text-stone-500">
-              Secure your table and pre-order your culinary journey. A 30% deposit is required for pre-orders of $50 or more.
+              {t('Chọn bàn và đặt trước món ăn cho hành trình ẩm thực của bạn. Yêu cầu đặt cọc 30% cho đơn hàng từ 50$ trở lên.', 'Secure your table and pre-order your culinary journey. A 30% deposit is required for pre-orders of $50 or more.')}
             </p>
           </div>
 
@@ -215,6 +246,47 @@ export default function ReservationPage() {
           </div>
         </div>
 
+        {!user && (
+          <div className="mb-8 rounded-2xl bg-amber-50 border border-amber-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900 shadow-xs">
+            <div className="flex items-center gap-3">
+              <AlertCircle size={20} className="text-amber-600 flex-shrink-0" />
+              <p className="text-xs sm:text-sm font-medium">
+                {t('Chỉ khách hàng có tài khoản đã đăng nhập mới có thể xác nhận đặt bàn. Vui lòng đăng nhập hoặc chọn thông tin trước rồi đăng nhập.', 'Only logged-in customers can confirm table reservations. Please log in or prepare your booking details first.')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const currentDraft = {
+                  partySize,
+                  selectedDate,
+                  selectedMonth: viewMonth + 1,
+                  selectedYear: viewYear,
+                  selectedTime,
+                  fullName,
+                  phone,
+                  preferredFloor,
+                  seatingPreferences,
+                  note,
+                  preOrderTotal,
+                  items,
+                }
+                localStorage.setItem('reservation_draft', JSON.stringify(currentDraft))
+                navigate('/login', {
+                  state: {
+                    redirectTo: '/reservation',
+                    reservationDraft: currentDraft,
+                    message: t('Vui lòng đăng nhập tài khoản để tiếp tục đặt bàn.', 'Please log in to proceed with table reservation.'),
+                  },
+                })
+              }}
+              className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs whitespace-nowrap shadow-sm transition cursor-pointer self-start sm:self-auto"
+            >
+              {t('Đăng nhập ngay', 'Log in Now')}
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* LEFT COLUMN: RESERVATION INFO */}
@@ -223,7 +295,7 @@ export default function ReservationPage() {
             {/* PARTY SIZE */}
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-stone-100">
               <h3 className="font-serif font-bold text-lg text-stone-900 mb-4 flex items-center gap-2">
-                <Users size={18} className="text-orange-500" /> Party Size
+                <Users size={18} className="text-orange-500" /> {t('Số người', 'Party Size')}
               </h3>
               <div className="flex items-center justify-between rounded-xl bg-[#f7f5f0] p-3 border border-stone-100">
                 <button
@@ -235,7 +307,7 @@ export default function ReservationPage() {
                 </button>
                 <div className="text-center">
                   <span className="font-serif text-3xl font-bold text-stone-900">{partySize}</span>
-                  <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-0.5">Guests</span>
+                  <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-0.5">{t('Khách', 'Guests')}</span>
                 </div>
                 <button
                   type="button"
@@ -251,7 +323,7 @@ export default function ReservationPage() {
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-stone-100">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-serif font-bold text-lg text-stone-900 flex items-center gap-2">
-                  <CalendarIcon size={18} className="text-orange-500" /> Date
+                  <CalendarIcon size={18} className="text-orange-500" /> {t('Ngày', 'Date')}
                 </h3>
                 
                 {/* THANH ĐIỀU HƯỚNG THÁNG */}
@@ -322,27 +394,27 @@ export default function ReservationPage() {
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-stone-100">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-serif font-bold text-lg text-stone-900 flex items-center gap-2">
-                  <Clock size={18} className="text-orange-500" /> Time
+                  <Clock size={18} className="text-orange-500" /> {t('Giờ', 'Time')}
                 </h3>
                 <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600">
-                  {isWeekend ? 'Weekend Hours' : 'Weekday Hours'}
+                  {isWeekend ? t('Giờ cuối tuần', 'Weekend Hours') : t('Giờ ngày thường', 'Weekday Hours')}
                 </span>
               </div>
 
               <div className="flex items-center gap-1.5 text-xs text-stone-500 mb-6">
                 <AlertCircle size={14} className="text-amber-500" />
-                <span>Operating hours for selected date: <strong className="text-stone-800">{timeBounds.label}</strong></span>
+                <span>{t('Giờ mở cửa của ngày đã chọn:', 'Operating hours for selected date:')} <strong className="text-stone-800">{timeBounds.label}</strong></span>
               </div>
 
               <div className="space-y-6 bg-[#fcfbf9] p-5 rounded-2xl border border-stone-100">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-400">Selected Time</label>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-400">{t('Giờ đã chọn', 'Selected Time')}</label>
                     <span className="font-serif text-3xl font-bold text-orange-600">{selectedTime}</span>
                   </div>
 
                   <div className="flex flex-col items-end">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1">Custom Input</label>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-1">{t('Nhập thủ công', 'Custom Input')}</label>
                     <input
                       type="time"
                       value={selectedTime}
@@ -373,24 +445,136 @@ export default function ReservationPage() {
               </div>
             </div>
 
+            {/* PREFERRED DINING AREA & SEATING PREFERENCES */}
+            <div className="rounded-2xl bg-white p-6 shadow-sm border border-stone-100 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-100">
+                <div>
+                  <h3 className="font-serif font-bold text-lg text-stone-900 flex items-center gap-2">
+                    <MapPin size={18} className="text-orange-500" /> {t('Khu vực mong muốn', 'Preferred Dining Area')}
+                    <span className="px-2 py-0.5 rounded-full bg-stone-100 text-[10px] font-bold text-stone-600 border border-stone-200">
+                      {t('Tùy chọn', 'Optional')}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-stone-500 mt-1">
+                    {preferredFloor === null
+                      ? t('Bạn đang để nhà hàng tự động chọn bàn trống đẹp nhất cho bạn.', 'Restaurant will automatically assign the best available table.')
+                      : t('Nhà hàng sẽ ưu tiên xếp bàn đẹp nhất thuộc khu vực bạn chọn.', 'We will prioritize assigning the best table in your preferred area.')}
+                  </p>
+                </div>
+
+                {preferredFloor !== null ? (
+                  <button
+                    type="button"
+                    onClick={() => setPreferredFloor(null)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 px-3 py-1.5 rounded-xl border border-red-200 bg-red-50/70 hover:bg-red-100/70 transition cursor-pointer self-start sm:self-center shadow-2xs"
+                  >
+                    <X size={13} /> {t('Hủy chọn (Tùy xếp)', 'Clear Selection')}
+                  </button>
+                ) : (
+                  <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 self-start sm:self-center">
+                    ✓ {t('Đang để tùy xếp', 'Any Floor Selected')}
+                  </span>
+                )}
+              </div>
+
+              {/* AREA CARDS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  {
+                    floor: null,
+                    title: t('Tùy nhà hàng xếp', 'Any Floor (No preference)'),
+                    desc: t('Bàn trống đẹp nhất bất kỳ tầng nào', 'Best available table anywhere'),
+                  },
+                  {
+                    floor: 1,
+                    title: t('Tầng 1 - Sảnh chính', 'Floor 1 - Main Hall'),
+                    desc: t('Ấm cúng, không khí sôi nổi', 'Cozy, vibrant atmosphere'),
+                  },
+                  {
+                    floor: 2,
+                    title: t('Tầng 2 - Lầu thoáng', 'Floor 2 - Balcony'),
+                    desc: t('View đường phố, lãng mạn', 'Street view, breezy & open'),
+                  },
+                  {
+                    floor: 3,
+                    title: t('Tầng 3 - VIP Rooftop', 'Floor 3 - VIP Rooftop'),
+                    desc: t('Riêng tư, cao cấp', 'Private, premium experience'),
+                  },
+                ].map((area) => {
+                  const isSelected = preferredFloor === area.floor
+                  return (
+                    <button
+                      key={String(area.floor)}
+                      type="button"
+                      onClick={() => setPreferredFloor((prev) => (prev === area.floor ? null : area.floor))}
+                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-orange-500 bg-orange-50/70 shadow-xs ring-1 ring-orange-500'
+                          : 'border-stone-200 hover:border-stone-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-stone-900">{area.title}</span>
+                        {isSelected && <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />}
+                      </div>
+                      <span className="text-[11px] text-stone-500 mt-1.5">{area.desc}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* SEATING PREFERENCES TAGS */}
+              <div className="pt-3 border-t border-stone-100">
+                <label className="block text-xs font-bold text-stone-700 mb-2 flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-amber-500" />
+                  {t('Sở thích chỗ ngồi (chọn nhiều, tùy chọn)', 'Seating Preferences (Optional, multiple choices)')}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'near_window', label: t('🪟 Gần cửa sổ', '🪟 Window View') },
+                    { id: 'high_chair', label: t('👶 Ghế trẻ em', '👶 Baby High Chair') },
+                    { id: 'celebration', label: t('🎂 Tiệc / Sinh nhật', '🎂 Celebration / Birthday') },
+                    { id: 'quiet', label: t('🤫 Góc yên tĩnh', '🤫 Quiet Corner') },
+                    { id: 'outdoor', label: t('🌿 Gần cây xanh', '🌿 Near Plants / Nature') },
+                  ].map((tag) => {
+                    const isChecked = seatingPreferences.includes(tag.label)
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => togglePreference(tag.label)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                          isChecked
+                            ? 'bg-orange-500 text-white border-orange-500 shadow-xs'
+                            : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                        }`}
+                      >
+                        {tag.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
             {/* CUSTOMER INFORMATION FORM */}
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-stone-100 space-y-4">
               <h3 className="font-serif font-bold text-lg text-stone-900 border-b border-stone-100 pb-3">
-                Customer Information
+                {t('Thông tin khách hàng', 'Customer Information')}
               </h3>
               <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1.5">Full Name</label>
+                <label className="block text-xs font-semibold text-stone-600 mb-1.5">{t('Họ và tên', 'Full Name')}</label>
                 <input
                   type="text"
                   required
-                  placeholder="Nguyen Van A"
+                  placeholder={t('Nguyễn Văn A', 'Nguyen Van A')}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1.5">Phone Number</label>
+                <label className="block text-xs font-semibold text-stone-600 mb-1.5">{t('Số điện thoại', 'Phone Number')}</label>
                 <input
                   type="tel"
                   required
@@ -401,10 +585,10 @@ export default function ReservationPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1.5">Reservation Notes</label>
+                <label className="block text-xs font-semibold text-stone-600 mb-1.5">{t('Ghi chú', 'Reservation Notes')}</label>
                 <textarea
                   rows={2}
-                  placeholder="Request a table near the window, child seat..."
+                  placeholder={t('Yêu cầu bàn gần cửa sổ, ghế cho trẻ em...', 'Request a table near the window, child seat...')}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition"
@@ -433,9 +617,9 @@ export default function ReservationPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-serif text-2xl font-bold text-stone-900 flex items-center gap-2">
-                    <UtensilsCrossed size={20} className="text-orange-500" /> Pre-Ordered Dishes
+                    <UtensilsCrossed size={20} className="text-orange-500" /> {t('Món đặt trước', 'Pre-Ordered Dishes')}
                   </h3>
-                  <p className="text-xs text-stone-500 mt-1">Dishes added to your cart for this reservation.</p>
+                  <p className="text-xs text-stone-500 mt-1">{t('Những món đã thêm vào giỏ hàng cho lần đặt bàn này.', 'Dishes added to your cart for this reservation.')}</p>
                 </div>
                 {items.length > 0 && (
                   /* NÚT + ADD MORE DISHES DẠNG BORDER */
@@ -444,7 +628,7 @@ export default function ReservationPage() {
                     onClick={() => navigate('/menu')}
                     className="text-xs font-bold text-orange-600 px-3 py-1.5 rounded-xl border border-orange-200 hover:border-orange-500 bg-white hover:bg-orange-50 transition cursor-pointer shadow-2xs"
                   >
-                    + Add more dishes
+                    {t('+ Thêm món', '+ Add more dishes')}
                   </button>
                 )}
               </div>
@@ -503,23 +687,23 @@ export default function ReservationPage() {
                   <div className="w-12 h-12 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center mx-auto mb-3">
                     <ShoppingBag size={24} />
                   </div>
-                  <h4 className="font-bold text-stone-800 text-sm">No Pre-ordered Dishes</h4>
+                  <h4 className="font-bold text-stone-800 text-sm">{t('Chưa có món nào', 'No Pre-ordered Dishes')}</h4>
                   <p className="text-xs text-stone-500 mt-1 max-w-xs mx-auto">
-                    You are reserving a table without pre-ordering dishes. You can select your meal directly at the restaurant.
+                    {t('Bạn đang đặt bàn mà không gọi trước món ăn. Bạn có thể chọn món trực tiếp tại nhà hàng.', 'You are reserving a table without pre-ordering dishes. You can select your meal directly at the restaurant.')}
                   </p>
                   <button
                     type="button"
                     onClick={() => navigate('/menu')}
                     className="mt-4 px-4 py-2 rounded-xl bg-stone-900 text-amber-400 font-bold text-xs hover:bg-stone-800 transition cursor-pointer"
                   >
-                    Browse Menu & Add Dishes
+                    {t('Xem thực đơn', 'Browse Menu & Add Dishes')}
                   </button>
                 </div>
               )}
 
               {/* TỔNG TIỀN MÓN ĐẶT TRƯỚC */}
               <div className="border-t border-stone-300/70 pt-4 flex justify-between items-center font-bold text-stone-900">
-                <span className="text-sm">Pre-order Total</span>
+                <span className="text-sm">{t('Tổng tiền đặt trước', 'Pre-order Total')}</span>
                 <span className="text-xl font-serif text-orange-600">${preOrderTotal.toFixed(2)}</span>
               </div>
 
@@ -528,7 +712,7 @@ export default function ReservationPage() {
                 type="submit"
                 className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 py-4 text-sm font-bold text-white shadow-lg hover:bg-orange-600 active:scale-[0.99] transition cursor-pointer"
               >
-                Continue to Deposit <ArrowRight size={16} />
+                Continue to Deposit {t('(Tiếp theo →)', '')} <ArrowRight size={16} />
               </button>
             </div>
           </div>

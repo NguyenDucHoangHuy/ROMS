@@ -8,8 +8,9 @@ export const authService = {
   register: (payload: RegisterPayload) =>
     apiClient.post<AuthResponse>('/auth/register', payload).then((r) => r.data),
 
-  logout: () =>
-    apiClient.post('/auth/logout').then((r) => r.data),
+  logout: (refreshToken: string) =>
+    // Backend cần refreshToken trong body để revoke đúng session
+    apiClient.post('/auth/logout', { refreshToken }).then((r) => r.data),
 
   getMe: () =>
     apiClient.get<User>('/auth/me').then((r) => r.data),

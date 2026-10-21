@@ -1,5 +1,8 @@
 
 import React from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
+import { useAuthStore } from '@/stores/authStore'
+import { ROUTES } from '@/constants/routes'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -7,23 +10,31 @@ interface ProtectedRouteProps {
 }
 
 /**
- * ProtectedRoute - DEVELOPMENT MODE
- *
- * Tạm thời bỏ qua authentication và role checking
- * để thuận tiện test toàn bộ frontend.
- *
- * Khi chuyển production:
- * - Kiểm tra JWT
- * - Kiểm tra isAuthenticated
- * - Kiểm tra role
+ * ProtectedRoute - Kiểm tra xác thực & Phân quyền truy cập (RBAC)
  */
 export default function ProtectedRoute({
   children,
   allowedRoles,
 }: ProtectedRouteProps) {
-  if (import.meta.env.DEV) {
-    console.log('🔓 ProtectedRoute: DEV BYPASS')
-    console.log('Allowed roles:', allowedRoles)
+  const { isAuthenticated, tokens, user } = useAuthStore()
+  const location = useLocation()
+
+  // 1. Nếu chưa đăng nhập hoặc không có accessToken -> Chuyển về /login kèm route muốn đến
+  if (!isAuthenticated || !tokens?.accessToken) {
+    return <Navigate to={ROUTES.LOGIN} state={{ redirectTo: location.pathname }} replace />
+  }
+
+  // 2. Nếu đã đăng nhập nhưng vai trò không khớp danh sách cho phép
+  if (allowedRoles && allowedRoles.length > 0 && user?.role) {
+    if (!allowedRoles.includes(user.role)) {
+      if (user.role === 'CASHIER') {
+        return <Navigate to="/cashier" replace />
+      }
+      if (user.role === 'CHEF') {
+        return <Navigate to="/kitchen" replace />
+      }
+      return <Navigate to="/" replace />
+    }
   }
 
   return <>{children}</>

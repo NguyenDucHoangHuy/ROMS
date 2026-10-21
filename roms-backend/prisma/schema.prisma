@@ -321,12 +321,31 @@ model InventoryItem {
   unit               String  // "kg", "gram", "lon", "chai"...
   currentStock       Decimal @default(0) @map("current_stock") @db.Decimal(12, 3)
   minAlertThreshold Decimal @default(0) @map("min_alert_threshold") @db.Decimal(12, 3)
+  category           String?
+  sku                String?
 
   recipes             Recipe[]
   stockReceiptDetails StockReceiptDetail[]
   stockMovements      StockMovement[]
 
   @@map("inventory_items")
+}
+
+model Supplier {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  category       String   @default("Rau củ quả tươi")
+  contactPerson  String?  @map("contact_person")
+  phone          String?
+  email          String?
+  address        String?
+  status         String   @default("ACTIVE")
+  rating         Float?   @default(5.0)
+  inFlightOrders Int      @default(0) @map("in_flight_orders")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("suppliers")
 }
 
 model Recipe {

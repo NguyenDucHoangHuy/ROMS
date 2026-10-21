@@ -7,45 +7,59 @@ import {
 } from "lucide-react";
 
 import PageHeading from "../common/PageHeading";
+import { useManagerLocale } from "@/contexts/ManagerLocaleContext";
 
 function ScheduleView() {
-  const days = ["T2 12", "T3 13", "T4 14", "T5 15", "T6 16", "T7 17", "CN 18"];
+  const { isEn, t } = useManagerLocale();
+  const days = isEn
+    ? ["Mon 12", "Tue 13", "Wed 14", "Thu 15", "Fri 16", "Sat 17", "Sun 18"]
+    : ["T2 12", "T3 13", "T4 14", "T5 15", "T6 16", "T7 17", "CN 18"];
+
   const shifts: [string, string, string[]][] = [
     [
       "Trần Thị A",
-      "Bếp",
-      ["Ca Sáng", "Ca Sáng", "", "Ca Gãy", "Ca Sáng", "Nghỉ", "Nghỉ"],
+      t("Bếp", "Kitchen"),
+      [
+        t("Ca Sáng", "Morning"),
+        t("Ca Sáng", "Morning"),
+        "",
+        t("Ca Gãy", "Split"),
+        t("Ca Sáng", "Morning"),
+        t("Nghỉ", "Day Off"),
+        t("Nghỉ", "Day Off"),
+      ],
     ],
     [
       "Nguyễn Văn V",
-      "Phục vụ",
+      t("Phục vụ", "Server"),
       [
-        "Nghỉ",
-        "Ca Chiều",
-        "Ca Chiều",
-        "Ca Chiều",
-        "Ca Chiều",
-        "Ca Sáng",
-        "Ca Sáng",
+        t("Nghỉ", "Day Off"),
+        t("Ca Chiều", "Afternoon"),
+        t("Ca Chiều", "Afternoon"),
+        t("Ca Chiều", "Afternoon"),
+        t("Ca Chiều", "Afternoon"),
+        t("Ca Sáng", "Morning"),
+        t("Ca Sáng", "Morning"),
       ],
     ],
   ];
+
   return (
     <div style={{ padding: '30px 34px 60px' , background: '#f7f5f2'}}>
       <PageHeading
-        title="Lịch Phân Ca"
-        description="Quản lý và sắp xếp lịch làm việc cho nhân viên."
+        title={t("Lịch Phân Ca", "Shift Schedule & Roster")}
+        description={t("Quản lý và sắp xếp lịch làm việc cho nhân viên.", "Coordinate and manage staff shifts, schedules, and days off.")}
         actions={
           <>
             <button className="select-button">
-              Tất cả bộ phận <ChevronDown />
+              {t("Tất cả bộ phận", "All Departments")} <ChevronDown />
             </button>
             <div className="tabs">
-              <button className="selected">Tuần</button>
-              <button>Tháng</button>
+              <button className="selected">{t("Tuần", "Week")}</button>
+              <button>{t("Tháng", "Month")}</button>
             </div>
             <button className="button primary">
-              <Plus /> Thêm Ca
+              <Plus /> {t("Thêm Ca", "Add Shift")}
             </button>
           </>
         }
@@ -56,7 +70,7 @@ function ScheduleView() {
             <ChevronLeft />
           </button>
           <b>
-            <CalendarDays /> Tuần 12 - 18 Tháng 10, 2023
+            <CalendarDays /> {isEn ? "Week of Oct 12 - Oct 18, 2023" : "Tuần 12 - 18 Tháng 10, 2023"}
           </b>
           <button>
             <ChevronRight />
@@ -64,20 +78,20 @@ function ScheduleView() {
         </div>
         <div className="schedule-legend">
           <span>
-            <i className="shift-dot morning" /> CA SÁNG (06:00 - 14:00)
+            <i className="shift-dot morning" /> {t("CA SÁNG (06:00 - 14:00)", "MORNING SHIFT (06:00 - 14:00)")}
           </span>
           <span>
-            <i className="shift-dot evening" /> CA CHIỀU (14:00 - 22:00)
+            <i className="shift-dot evening" /> {t("CA CHIỀU (14:00 - 22:00)", "AFTERNOON SHIFT (14:00 - 22:00)")}
           </span>
           <span>
-            <i className="shift-dot flexible" /> CA GÃY (LINH HOẠT)
+            <i className="shift-dot flexible" /> {t("CA GÃY (LINH HOẠT)", "SPLIT / FLEX SHIFT")}
           </span>
         </div>
         <div className="schedule-scroll">
           <table className="schedule-table">
             <thead>
               <tr>
-                <th>Nhân viên</th>
+                <th>{t("Nhân viên", "Staff Member")}</th>
                 {days.map((day) => (
                   <th key={day}>{day}</th>
                 ))}
@@ -95,24 +109,29 @@ function ScheduleView() {
                       </span>
                     </div>
                   </td>
-                  {cells.map((shift, index) => (
-                    <td key={`${name}-${index}`}>
-                      {shift ? (
-                        <span
-                          className={`shift ${shift.includes("Chiều") ? "evening" : shift === "Nghỉ" ? "off" : "morning"}`}
-                        >
-                          {shift}
-                          <small>
-                            {shift === "Nghỉ"
-                              ? ""
-                              : shift.includes("Chiều")
-                                ? "14:00 - 22:00"
-                                : "06:00 - 14:00"}
-                          </small>
-                        </span>
-                      ) : null}
-                    </td>
-                  ))}
+                  {cells.map((shift, index) => {
+                    const isOff = shift === t("Nghỉ", "Day Off");
+                    const isEve = shift === t("Ca Chiều", "Afternoon");
+
+                    return (
+                      <td key={`${name}-${index}`}>
+                        {shift ? (
+                          <span
+                            className={`shift ${isEve ? "evening" : isOff ? "off" : "morning"}`}
+                          >
+                            {shift}
+                            <small>
+                              {isOff
+                                ? ""
+                                : isEve
+                                  ? "14:00 - 22:00"
+                                  : "06:00 - 14:00"}
+                            </small>
+                          </span>
+                        ) : null}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

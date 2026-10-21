@@ -14,11 +14,17 @@ export const reservationService = {
   getToday: () =>
     apiClient.get<Reservation[]>('/reservations/today').then((r) => r.data),
 
+  getMyReservations: () =>
+    apiClient.get<Reservation[]>('/reservations/my').then((r) => r.data),
+
   getAll: (params?: { status?: string; date?: string }) =>
     apiClient.get<Reservation[]>('/reservations', { params }).then((r) => r.data),
 
   checkIn: (payload: CheckInPayload) =>
     apiClient.post<Reservation>('/reservations/check-in', payload).then((r) => r.data),
+
+  confirm: (id: string) =>
+    apiClient.patch<Reservation>(`/reservations/${id}/confirm`).then((r) => r.data),
 
   cancel: (id: string, reason?: string) =>
     apiClient.patch<Reservation>(`/reservations/${id}/cancel`, { reason }).then((r) => r.data),

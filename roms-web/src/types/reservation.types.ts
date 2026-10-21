@@ -1,51 +1,41 @@
 import type { Table } from './table.types'
 import type { User } from './user.types'
-import type { MenuItem } from './menu.types'
 
-export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED'
-
-export interface ReservationItem {
-  id: string
-  reservationId: string
-  menuItemId: string
-  menuItem: MenuItem
-  quantity: number
-  unitPrice: number
-}
+export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
+export type DepositStatus = 'PENDING' | 'PAID' | 'REFUNDED'
 
 export interface Reservation {
   id: string
-  customerId: string
-  customer: User
-  tableId: string | null
-  table: Table | null
+  customerId?: string | null
+  customer?: User | null
+  guestName: string
+  guestPhone: string
+  specialRequest?: string | null
+  tableId?: string | null
+  table?: Table | null
   partySize: number
-  reservationDate: string    // ISO datetime
-  durationMinutes: number    // Mặc định 90 phút
+  reservationTime: string // ISO datetime từ backend
+  depositAmount: number | string
+  depositStatus: DepositStatus
   status: ReservationStatus
-  depositAmount: number      // Số tiền đặt cọc
-  depositPaid: boolean
-  items: ReservationItem[]   // Món ăn đặt trước
-  notes: string | null
-  confirmationCode: string   // Mã xác nhận gửi SMS/Email
   createdAt: string
-  updatedAt: string
+  updatedAt?: string
 }
 
 /** Payload tạo đặt bàn mới */
 export interface CreateReservationPayload {
-  tableId?: string
+  guestName: string
+  guestPhone: string
+  reservationTime: string // ISO datetime
   partySize: number
-  reservationDate: string
-  notes?: string
-  items?: {
-    menuItemId: string
-    quantity: number
-  }[]
+  specialRequest?: string
+  tableId?: string
+  depositAmount?: number
+  depositStatus?: DepositStatus
 }
 
-/** Payload check-in bởi Waiter */
+/** Payload check-in */
 export interface CheckInPayload {
-  confirmationCode: string
-  tableId: string
+  id: string
+  tableId?: string
 }

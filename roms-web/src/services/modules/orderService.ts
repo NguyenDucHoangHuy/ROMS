@@ -45,17 +45,17 @@ export const orderService = {
   getPendingPayment: () =>
     apiClient.get<Order[]>('/orders/pending-payment').then((r) => r.data),
 
-  processPayment: (orderId: string, payload: ProcessPaymentPayload) =>
-    apiClient.post<Order>(`/orders/${orderId}/payment`, payload).then((r) => r.data),
+  processPayment: (sessionId: string, payload: ProcessPaymentPayload) =>
+    apiClient.post<Order>(`/billing/sessions/${sessionId}/pay`, payload).then((r) => r.data),
 
   voidOrder: (orderId: string, managerPasscode: string) =>
     apiClient
       .post(`/orders/${orderId}/void`, { managerPasscode })
       .then((r) => r.data),
 
-  printBill: (orderId: string, isPreview?: boolean) =>
+  printBill: (sessionId: string, isPreview?: boolean) =>
     apiClient
-      .get<Blob>(`/orders/${orderId}/bill`, {
+      .post<Blob>(`/billing/sessions/${sessionId}/bill`, {
         params: { preview: isPreview },
         responseType: 'blob',
       })
