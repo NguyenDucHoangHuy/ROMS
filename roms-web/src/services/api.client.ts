@@ -62,6 +62,9 @@ apiClient.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/register')) {
+        return Promise.reject(error)
+      }
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
@@ -79,11 +82,11 @@ apiClient.interceptors.response.use(
       const { tokens, updateTokens, logout } = useAuthStore.getState()
 
       try {
-        const response = await axios.post<{ accessToken: string; refreshToken: string }>(
+        const response = await axios.post<{ success: boolean; data: { accessToken: string; refreshToken: string } }>(
           `${API_URL}/auth/refresh`,
           { refreshToken: tokens?.refreshToken },
         )
-        const { accessToken, refreshToken } = response.data
+        const { accessToken, refreshToken } = response.data?.data || (response.data as any)
         updateTokens({ accessToken, refreshToken })
         processQueue(null, accessToken)
         originalRequest.headers.Authorization = `Bearer ${accessToken}`

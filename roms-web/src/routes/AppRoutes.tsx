@@ -31,6 +31,7 @@ import HomePage from '@/features/client-qr/HomePage'
 import DishDetail from '@/features/client-qr/DishDetail'
 import DepositPage from '@/features/client-qr/DepositPage'
 import ReservationDetail from '@/features/client-qr/ReservationDetail'
+import MyReservationsPage from '@/features/client-qr/MyReservationsPage'
 import AboutUsPage from '@/features/client-qr/AboutUsPage'
 
 // ============================================================
@@ -113,6 +114,8 @@ export default function AppRoutes() {
         <Route path="/table/:tableId/order-status" element={<OrderStatusPage />} />
         <Route path="/reservation" element={<ReservationPage />} />
         <Route path="/reservation/:reservationId" element={<ReservationDetail />} />
+        <Route path="/my-reservations" element={<MyReservationsPage />} />
+        <Route path="/profile" element={<MyReservationsPage />} />
         <Route path="/dish/:dishId" element={<DishDetail />} />
         <Route path="/deposit" element={<DepositPage />} />
         <Route path="/about" element={<AboutUsPage />} />

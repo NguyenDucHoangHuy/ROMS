@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
   HttpCode,
   HttpStatus,
@@ -61,7 +62,10 @@ export class AuthController {
       'Trả về Access Token (15m) và Refresh Token (7d). ' +
       'Role của user được gắn tự động vào token từ Database.',
   })
-  @ApiResponse({ status: 200, description: 'Đăng nhập thành công, trả về token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Đăng nhập thành công, trả về token',
+  })
   @ApiResponse({ status: 401, description: 'Sai số điện thoại hoặc mật khẩu' })
   login(@Body() dto: LoginDto, @Req() req: Request) {
     // Truyền Device Info và IP để lưu vào refresh_tokens table (phục vụ audit)
@@ -88,14 +92,21 @@ export class AuthController {
       'Nếu token bị dùng lại (reuse) → Tất cả phiên đăng nhập bị vô hiệu.',
   })
   @ApiResponse({ status: 200, description: 'Token mới đã được cấp phát' })
-  @ApiResponse({ status: 401, description: 'Refresh token không hợp lệ hoặc đã hết hạn' })
+  @ApiResponse({
+    status: 401,
+    description: 'Refresh token không hợp lệ hoặc đã hết hạn',
+  })
   refresh(@Body() dto: RefreshTokenDto, @Req() req: Request) {
     const deviceInfo = req.headers['user-agent'];
     const ipAddress =
       (req.headers['x-forwarded-for'] as string)?.split(',')[0] ??
       req.socket.remoteAddress;
 
-    return this.authService.refreshTokens(dto.refreshToken, deviceInfo, ipAddress);
+    return this.authService.refreshTokens(
+      dto.refreshToken,
+      deviceInfo,
+      ipAddress,
+    );
   }
 
   // ============================================================
@@ -114,10 +125,24 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Đăng xuất thành công' })
   @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
-  logout(
-    @CurrentUser() user: JwtPayload,
-    @Body() dto: RefreshTokenDto,
-  ) {
+  logout(@CurrentUser() user: JwtPayload, @Body() dto: RefreshTokenDto) {
     return this.authService.logout(user.sub, dto.refreshToken);
+  }
+
+  // ============================================================
+  // GET /api/v1/auth/me
+  // ============================================================
+
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Lấy thông tin user đang đăng nhập',
+    description: 'Trả về profile của user hiện tại dựa trên Access Token.',
+  })
+  @ApiResponse({ status: 200, description: 'Thông tin user' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  @ApiBearerAuth()
+  @Get('me')
+  getMe(@CurrentUser() user: JwtPayload) {
+    return this.authService.getMe(user.sub);
   }
 }

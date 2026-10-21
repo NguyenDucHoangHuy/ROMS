@@ -2,7 +2,8 @@ import type { UserRole } from '@/constants/roles'
 
 export interface User {
   id: string
-  name: string
+  fullName: string
+  name?: string
   email: string | null
   phone: string | null
   role: UserRole
@@ -23,14 +24,15 @@ export interface LoginPayload {
 }
 
 export interface RegisterPayload {
-  name: string
+  fullName: string
   phone: string
   password: string
 }
 
 export interface AuthResponse {
   user: User
-  tokens: AuthTokens
+  accessToken: string
+  refreshToken: string
 }
 
 /** Loyalty / Membership */

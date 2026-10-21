@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import { getSocket } from '@/lib/socket'
 import type { Socket } from 'socket.io-client'
 
@@ -15,17 +15,22 @@ type SocketCallback = (...args: unknown[]) => void
  * })
  */
 export function useSocket(eventName: SocketEvent, callback: SocketCallback): void {
-  const stableCallback = useCallback(callback, [callback])
+  const savedCallback = useRef(callback)
+
+  useEffect(() => {
+    savedCallback.current = callback
+  }, [callback])
 
   useEffect(() => {
     const socket: Socket = getSocket()
+    const handler = (...args: unknown[]) => savedCallback.current(...args)
 
-    socket.on(eventName, stableCallback)
+    socket.on(eventName, handler)
 
     return () => {
-      socket.off(eventName, stableCallback)
+      socket.off(eventName, handler)
     }
-  }, [eventName, stableCallback])
+  }, [eventName])
 }
 
 /**

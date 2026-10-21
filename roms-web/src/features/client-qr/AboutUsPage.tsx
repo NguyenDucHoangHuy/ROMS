@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ArrowLeft, ArrowRight, CheckCircle2, Send, UtensilsCrossed, Calendar, MessageSquare, MapPin } from 'lucide-react'
 import Footer from '@/components/Footer'
+import { useClientLocale } from '@/contexts/ClientLocaleContext'
 
 // Data for Trending Slider
 const trendingItems = [
@@ -31,6 +32,7 @@ const trendingItems = [
 ]
 
 export default function AboutUsPage() {
+  const { t } = useClientLocale()
   const [currentIndex, setCurrentIndex] = useState(0)
 
   // Slider controls (slides by 1 item, displaying 2 visible at a time)
@@ -56,10 +58,10 @@ export default function AboutUsPage() {
           />
         </div>
         <div className="relative mx-auto max-w-7xl px-6 text-center space-y-4">
-          <span className="text-sm font-bold uppercase tracking-widest text-amber-400">Welcome To ROMS</span>
-          <h1 className="font-serif !text-white text-4xl sm:text-6xl font-bold">About Our Restaurant</h1>
+          <span className="text-sm font-bold uppercase tracking-widest text-amber-400">{t('Chào mừng đến ROMS', 'Welcome To ROMS')}</span>
+          <h1 className="font-serif !text-white text-4xl sm:text-6xl font-bold">{t('Về nhà hàng của chúng tôi', 'About Our Restaurant')}</h1>
           <p className="mx-auto max-w-2xl text-stone-300 text-sm sm:text-base leading-relaxed">
-            Discover our passion for authentic culinary experiences, fresh local ingredients, and unforgettable dining moments in Da Nang.
+            {t('Khám phá niềm đam mê ẩm thực chân thực, nguyên liệu tươi ngon và những khoảnh khắc ăn uống tuyệt vời tại Đà Nẵng.', 'Discover our passion for authentic culinary experiences, fresh local ingredients, and unforgettable dining moments in Da Nang.')}
           </p>
         </div>
       </section>
@@ -79,32 +81,32 @@ export default function AboutUsPage() {
 
           {/* Content - Chiếm 7 cột */}
           <div className="lg:col-span-7 space-y-6">
-            <h3 className="font-serif text-3xl font-bold text-amber-500 italic">About restaurant</h3>
+            <h3 className="font-serif text-3xl font-bold text-amber-500 italic">{t('Về nhà hàng', 'About restaurant')}</h3>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-stone-900 leading-snug">
-              Health and safety, along with quality, are the cornerstones of our brand
+              {t('Sức khỏe và an toàn, cùng chất lượng, là nền tảng của thương hiệu chúng tôi', 'Health and safety, along with quality, are the cornerstones of our brand')}
             </h2>
             <p className="text-stone-600 text-sm leading-relaxed">
-              Welcome to Savory, where culinary passion meets exceptional service. Nestled in the heart of Da Nang, we offer a diverse menu inspired by both local flavors and international cuisine. Our talented chefs use only the freshest ingredients to create dishes that delight the senses.
+              {t('Chào mừng bạn đến với ROMS, nơi đam mê ẩm thực gặp gỡ dịch vụ tuyệt vời. Thiết lập ngay tại trái tim của Đà Nẵng, chúng tôi cung cấp thực đơn đa dạng, được lấy cảm hứng từ cả hương vị địa phương lẫn quốc tế. Các đầu bếp tài năng của chúng tôi chỉ sử dụng những nguyên liệu tươi nhất.', 'Welcome to Savory, where culinary passion meets exceptional service. Nestled in the heart of Da Nang, we offer a diverse menu inspired by both local flavors and international cuisine. Our talented chefs use only the freshest ingredients to create dishes that delight the senses.')}
             </p>
 
             {/* Feature List */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div className="flex items-center gap-2 text-stone-800 font-semibold text-sm">
-                <UtensilsCrossed size={18} className="text-amber-500" /> Food Items management
+                <UtensilsCrossed size={18} className="text-amber-500" /> {t('Quản lý thực đơn', 'Food Items management')}
               </div>
               <div className="flex items-center gap-2 text-stone-800 font-semibold text-sm">
-                <Calendar size={18} className="text-amber-500" /> Table reservation
+                <Calendar size={18} className="text-amber-500" /> {t('Đặt bàn', 'Table reservation')}
               </div>
               <div className="flex items-center gap-2 text-stone-800 font-semibold text-sm">
-                <MessageSquare size={18} className="text-amber-500" /> Customer feedback portal
+                <MessageSquare size={18} className="text-amber-500" /> {t('Cổng phản hồi khách hàng', 'Customer feedback portal')}
               </div>
               <div className="flex items-center gap-2 text-stone-800 font-semibold text-sm">
-                <MapPin size={18} className="text-amber-500" /> Location-based services
+                <MapPin size={18} className="text-amber-500" /> {t('Dịch vụ dựa trên vị trí', 'Location-based services')}
               </div>
             </div>
 
             <button className="mt-4 rounded-xl bg-amber-400 px-8 py-3.5 text-xs font-bold uppercase tracking-wider text-stone-900 shadow-md hover:bg-amber-500 transition">
-              See Details
+              {t('Xem chi tiết', 'See Details')}
             </button>
           </div>
 
@@ -166,10 +168,10 @@ export default function AboutUsPage() {
               <span className="text-xs font-bold uppercase tracking-widest text-amber-500">Our Trending</span>
             </div>
             <h2 className="font-serif text-3xl sm:text-4xl font-bold uppercase tracking-wide text-stone-900">
-              Fresh & Better Foods For You
+              {t('Ẩm thực tươi ngon cho bạn', 'Fresh & Better Foods For You')}
             </h2>
             <p className="text-stone-500 text-sm leading-relaxed">
-              Explore our most popular culinary creations and signature drinks carefully crafted by master chefs to fulfill your taste buds.
+              {t('Khám phá những món ăn phổ biến nhất và đồ uống đặc biệt được chế tác bởi các đầu bếp điệu lệ.', 'Explore our most popular culinary creations and signature drinks carefully crafted by master chefs to fulfill your taste buds.')}
             </p>
 
             {/* Slider Navigation Buttons */}
@@ -244,12 +246,12 @@ export default function AboutUsPage() {
 
             {/* Content Right */}
             <div className="md:col-span-5 p-8 sm:p-10 flex flex-col justify-center space-y-4">
-              <h3 className="font-serif text-2xl font-bold text-stone-900">Ossetian pie with meat</h3>
+              <h3 className="font-serif text-2xl font-bold text-stone-900">{t('Bánh Pie Ossetia với thịt', 'Ossetian pie with meat')}</h3>
               <p className="text-xs text-stone-500 leading-relaxed">
-                Ossetian pies — the theme is delicious, crafted with traditionally seasoned beef wrapped in fragrant baked dough, creating a flavor explosion you cannot resist.
+                {t('Bánh Pie Ossetia — món ăn ngon lành, được làm từ thịt bò thượng hạng gói trong bột bánh thơm phức, tạo nên hương vị khó cưỡng.', 'Ossetian pies — the theme is delicious, crafted with traditionally seasoned beef wrapped in fragrant baked dough, creating a flavor explosion you cannot resist.')}
               </p>
               <p className="text-xs text-stone-500 leading-relaxed">
-                Fresh pastries filled with selected spices are guaranteed to replace your full lunch or dinner with delight.
+                {t('Nhân bánh tươi với những gia vị được chọn lọc chắc chắn sẽ làm thế chỗ bữa trưa hay tối của bạn.', 'Fresh pastries filled with selected spices are guaranteed to replace your full lunch or dinner with delight.')}
               </p>
               <div className="pt-2">
                 <span className="inline-flex items-center gap-2 rounded-xl border border-stone-200 px-4 py-2 text-xs font-bold text-stone-800 bg-stone-50">

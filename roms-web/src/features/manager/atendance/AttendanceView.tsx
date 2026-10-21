@@ -229,9 +229,9 @@ import {
   X,
 } from "lucide-react";
 
-// import PageHeading from "../layout/PageHeading";
 import PageHeading from "../common/PageHeading";
 import KPI from "../common/KPI";
+import { useManagerLocale } from "@/contexts/ManagerLocaleContext";
 
 /* ================================================================
    Dữ liệu mẫu (demo) — trong thực tế sẽ lấy từ API backend.
@@ -405,11 +405,11 @@ const SO_DONG_MOI_TRANG = 5;
 const TONG_SO_NHAN_SU_CONG_TY = 48; // tổng toàn nhà hàng (dùng cho KPI, khác với size mock ở trên)
 
 const TUY_CHON_CA_LAM_VIEC = [
-  { key: "tat-ca", label: "Tất cả ca làm việc" },
-  { key: "sang", label: "Ca sáng (06:00 - 14:00)" },
-  { key: "chieu", label: "Ca chiều (14:00 - 22:00)" },
-  { key: "gay", label: "Ca gãy (linh hoạt)" },
-]satisfies { key: CaLamViec; label: string }[];
+  { key: "tat-ca", vi: "Tất cả ca làm việc", en: "All Shifts" },
+  { key: "sang", vi: "Ca sáng (06:00 - 14:00)", en: "Morning Shift (06:00 - 14:00)" },
+  { key: "chieu", vi: "Ca chiều (14:00 - 22:00)", en: "Afternoon Shift (14:00 - 22:00)" },
+  { key: "gay", vi: "Ca gãy (linh hoạt)", en: "Split / Flex Shift" },
+];
 
 /* Toạ độ khu vực 470 Trần Đại Nghĩa, Ngũ Hành Sơn, Đà Nẵng (VKU) */
 const VI_TRI_NHA_HANG = { lat: 15.9739, lon: 108.2531 };
@@ -417,10 +417,15 @@ const BBOX_BAN_DO = "108.2461,15.9669,108.2601,15.9809"; // vùng hiển thị q
 const OSM_EMBED_SRC = `https://www.openstreetmap.org/export/embed.html?bbox=${BBOX_BAN_DO}&layer=mapnik&marker=${VI_TRI_NHA_HANG.lat}%2C${VI_TRI_NHA_HANG.lon}`;
 const OSM_XEM_LON_HON = `https://www.openstreetmap.org/?mlat=${VI_TRI_NHA_HANG.lat}&mlon=${VI_TRI_NHA_HANG.lon}#map=17/${VI_TRI_NHA_HANG.lat}/${VI_TRI_NHA_HANG.lon}`;
 
-const TEN_THU = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+const TEN_THU_VI = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+const TEN_THU_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const TEN_THANG_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function dinhDangNgayDayDu(date: Date) {
-  return `${TEN_THU[date.getDay()]}, ${date.getDate()} Tháng ${date.getMonth() + 1}, ${date.getFullYear()}`;
+function dinhDangNgayDayDu(date: Date, isEn: boolean) {
+  if (isEn) {
+    return `${TEN_THU_EN[date.getDay()]}, ${TEN_THANG_EN[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+  }
+  return `${TEN_THU_VI[date.getDay()]}, ${date.getDate()} Tháng ${date.getMonth() + 1}, ${date.getFullYear()}`;
 }
 
 /** Sinh lưới ngày (6 hàng x 7 cột, bắt đầu từ Thứ Hai) cho 1 tháng bất kỳ */
@@ -444,6 +449,7 @@ function cungNgay(a: Date, b: Date): boolean  {
 }
 
 export default function AttendanceView() {
+  const { isEn, t } = useManagerLocale();
   const [ngayDaChon, setNgayDaChon] = useState(() => new Date(2023, 9, 24));
   const [thangHienThiLich, setThangHienThiLich] = useState(() => new Date(2023, 9, 1));
   const [moLich, setMoLich] = useState(false);
@@ -566,7 +572,8 @@ export default function AttendanceView() {
 
   const luoiNgayLich = useMemo(() => taoLuoiNgay(thangHienThiLich), [thangHienThiLich]);
   const nhanCaHienTai =
-    TUY_CHON_CA_LAM_VIEC.find((t) => t.key === caDangChon)?.label ?? "Tất cả ca làm việc";
+    TUY_CHON_CA_LAM_VIEC.find((item) => item.key === caDangChon)?.[isEn ? "en" : "vi"] ??
+    (isEn ? "All Shifts" : "Tất cả ca làm việc");
 
   return (
     <div style={{ padding: "30px 34px 60px" , background: '#f7f5f2'}}>
@@ -651,13 +658,13 @@ export default function AttendanceView() {
       `}</style>
 
       <PageHeading
-        title="Chấm công & Check-in GPS"
-        description={`Ngày xem: ${dinhDangNgayDayDu(ngayDaChon)}`}
+        title={t("Chấm công & Check-in GPS", "Attendance & GPS Check-in")}
+        description={`${t("Ngày xem:", "Date:")} ${dinhDangNgayDayDu(ngayDaChon, isEn)}`}
         actions={
           <>
             <div className="av-date-wrap" ref={lichRef}>
               <button className="button secondary" onClick={moLichVaCanChinhThang}>
-                <CalendarDays /> Chọn ngày
+                <CalendarDays /> {t("Chọn ngày", "Select Date")}
               </button>
 
               {moLich && (
@@ -667,7 +674,7 @@ export default function AttendanceView() {
                       <ChevronLeft size={16} />
                     </button>
                     <span className="av-calendar-title">
-                      Tháng {thangHienThiLich.getMonth() + 1} / {thangHienThiLich.getFullYear()}
+                      {isEn ? `${TEN_THANG_EN[thangHienThiLich.getMonth()]} ${thangHienThiLich.getFullYear()}` : `Tháng ${thangHienThiLich.getMonth() + 1} / ${thangHienThiLich.getFullYear()}`}
                     </span>
                     <button onClick={() => doiThang(1)} aria-label="Tháng sau">
                       <ChevronRight size={16} />
@@ -675,8 +682,8 @@ export default function AttendanceView() {
                   </div>
 
                   <div className="av-calendar-weekdays">
-                    {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((t) => (
-                      <span key={t}>{t}</span>
+                    {(isEn ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]).map((dName) => (
+                      <span key={dName}>{dName}</span>
                     ))}
                   </div>
 
@@ -704,7 +711,9 @@ export default function AttendanceView() {
                     })}
                   </div>
 
-                  <div className="av-calendar-footer">Chọn 1 ngày để xem dữ liệu chấm công</div>
+                  <div className="av-calendar-footer">
+                    {t("Chọn 1 ngày để xem dữ liệu chấm công", "Select a date to view attendance logs")}
+                  </div>
                 </div>
               )}
             </div>
@@ -712,10 +721,10 @@ export default function AttendanceView() {
             <button className="button primary" onClick={xuatBaoCao} disabled={trangThaiXuat === "dang-xuat"}>
               {trangThaiXuat === "da-xuat" ? <Check /> : <Download />}
               {trangThaiXuat === "dang-xuat"
-                ? "Đang xuất..."
+                ? t("Đang xuất...", "Exporting...")
                 : trangThaiXuat === "da-xuat"
-                ? "Đã xuất file"
-                : "Xuất báo cáo"}
+                ? t("Đã xuất file", "Exported")
+                : t("Xuất báo cáo", "Export Report")}
             </button>
           </>
         }
@@ -724,23 +733,23 @@ export default function AttendanceView() {
       <div className="kpi-grid three">
         <KPI
           icon={ClipboardCheck}
-          label="Tổng nhân sự có mặt"
+          label={t("Tổng nhân sự có mặt", "Present Staff")}
           value={String(staff.filter((p) => p.tone !== "absent").length)}
-          detail={`/ ${TONG_SO_NHAN_SU_CONG_TY} nhân viên`}
+          detail={`/ ${TONG_SO_NHAN_SU_CONG_TY} ${t("nhân viên", "employees")}`}
           variant="green"
         />
         <KPI
           icon={Clock3}
-          label="Đi muộn"
+          label={t("Đi muộn", "Late Arrivals")}
           value={String(staff.filter((p) => p.tone === "late").length)}
-          detail="nhân viên"
+          detail={t("nhân viên", "employees")}
           variant="gold"
         />
         <KPI
           icon={AlertCircle}
-          label="Vắng mặt"
+          label={t("Vắng mặt", "Absent")}
           value={String(staff.filter((p) => p.tone === "absent").length)}
-          detail="nhân viên"
+          detail={t("nhân viên", "employees")}
           variant="red"
         />
       </div>
@@ -749,8 +758,8 @@ export default function AttendanceView() {
         <section className="panel table-panel">
           <div className="panel-header">
             <div>
-              <h2>Bảng lương & Chấm công</h2>
-              <p>Danh sách nhân sự trong ngày</p>
+              <h2>{t("Bảng lương & Chấm công", "Time & Attendance Roster")}</h2>
+              <p>{t("Danh sách nhân sự trong ngày", "Daily staff attendance records")}</p>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -758,7 +767,7 @@ export default function AttendanceView() {
                 <Search size={15} />
                 <input
                   type="text"
-                  placeholder="Tìm theo tên hoặc vai trò..."
+                  placeholder={t("Tìm theo tên hoặc vai trò...", "Search by name or role...")}
                   value={tuKhoa}
                   onChange={(e) => {
                     setTuKhoa(e.target.value);
@@ -782,14 +791,14 @@ export default function AttendanceView() {
                 </button>
                 {moDropdownCa && (
                   <div className="av-dropdown-menu">
-                    {TUY_CHON_CA_LAM_VIEC.map((t) => (
+                    {TUY_CHON_CA_LAM_VIEC.map((item) => (
                       <button
-                        key={t.key}
-                        className={`av-dropdown-item${caDangChon === t.key ? " av-dropdown-item--active" : ""}`}
-                        onClick={() => chonCaLamViec(t.key)}
+                        key={item.key}
+                        className={`av-dropdown-item${caDangChon === item.key ? " av-dropdown-item--active" : ""}`}
+                        onClick={() => chonCaLamViec(item.key as CaLamViec)}
                       >
-                        {t.label}
-                        {caDangChon === t.key && <Check size={14} />}
+                        {isEn ? item.en : item.vi}
+                        {caDangChon === item.key && <Check size={14} />}
                       </button>
                     ))}
                   </div>
@@ -802,11 +811,11 @@ export default function AttendanceView() {
             <table>
               <thead>
                 <tr>
-                  <th>Nhân viên</th>
-                  <th>Giờ vào</th>
-                  <th>Giờ ra</th>
-                  <th>Tổng giờ</th>
-                  <th>Trạng thái</th>
+                  <th>{t("Nhân viên", "Employee")}</th>
+                  <th>{t("Giờ vào", "Clock In")}</th>
+                  <th>{t("Giờ ra", "Clock Out")}</th>
+                  <th>{t("Tổng giờ", "Hours")}</th>
+                  <th>{t("Trạng thái", "Status")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -832,7 +841,7 @@ export default function AttendanceView() {
                 {duLieuTrangHienTai.length === 0 && (
                   <tr>
                     <td colSpan={5} style={{ textAlign: "center", padding: "26px 0", color: "#9a938a" }}>
-                      Không tìm thấy nhân sự phù hợp.
+                      {t("Không tìm thấy nhân sự phù hợp.", "No matching staff records found.")}
                     </td>
                   </tr>
                 )}
@@ -843,8 +852,8 @@ export default function AttendanceView() {
           <div className="table-footer">
             <span>
               {danhSachDaLoc.length === 0
-                ? "Không có kết quả"
-                : `Hiển thị ${dongBatDau}-${dongKetThuc} của ${danhSachDaLoc.length} nhân sự`}
+                ? t("Không có kết quả", "No results")
+                : `${t("Hiển thị", "Showing")} ${dongBatDau}-${dongKetThuc} ${t("của", "of")} ${danhSachDaLoc.length} ${t("nhân sự", "employees")}`}
             </span>
             <div className="pagination">
               <button
@@ -878,21 +887,21 @@ export default function AttendanceView() {
           <div className="panel-header">
             <div>
               <h2>
-                <Map /> Bản đồ Check-in GPS
+                <Map /> {t("Bản đồ Check-in GPS", "GPS Check-in Map")}
               </h2>
-              <p>Vị trí check-in thời gian thực</p>
+              <p>{t("Vị trí check-in thời gian thực", "Real-time geofence check-in locations")}</p>
             </div>
           </div>
 
           <div className="av-map-wrap" style={{ flex: 1, minHeight: 260 }}>
             <iframe
-              title="Bản đồ Check-in GPS - 470 Trần Đại Nghĩa, Đà Nẵng"
+              title="GPS Check-in Map - 470 Tran Dai Nghia, Da Nang"
               className="av-map-frame"
               src={OSM_EMBED_SRC}
               loading="lazy"
             />
             <a className="av-map-open-link" href={OSM_XEM_LON_HON} target="_blank" rel="noopener noreferrer">
-              <ExternalLink size={13} /> Xem lớn hơn
+              <ExternalLink size={13} /> {t("Xem lớn hơn", "View Larger Map")}
             </a>
             <div className="av-map-address">
               📍 ROMS Restaurant — 470 Trần Đại Nghĩa, Ngũ Hành Sơn, Đà Nẵng
@@ -901,12 +910,12 @@ export default function AttendanceView() {
 
           <div className="map-legend">
             <span>
-              <i className="dot green-dot" /> Hợp lệ
+              <i className="dot green-dot" /> {t("Hợp lệ", "Valid Geofence")}
             </span>
             <span>
-              <i className="dot yellow-dot" /> Sai vị trí/muộn
+              <i className="dot yellow-dot" /> {t("Sai vị trí/muộn", "Off-site / Late")}
             </span>
-            <span>Cập nhật 2 phút trước</span>
+            <span>{t("Cập nhật 2 phút trước", "Updated 2 mins ago")}</span>
           </div>
         </section>
       </div>

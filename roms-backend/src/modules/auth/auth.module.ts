@@ -43,14 +43,13 @@ import { AuthController } from './auth.controller';
         // Cast string → StringValue (branded type của thư viện ms)
         // ms là transitive dep: @nestjs/jwt → jsonwebtoken → ms
         // Giá trị '15m', '1h', '7d'... đều hợp lệ với StringValue
-        const expiresIn = (
-          config.get<string>('JWT_ACCESS_EXPIRY') ?? '15m'
-        ) as StringValue;
+        const expiresIn = (config.get<string>('JWT_ACCESS_EXPIRY') ??
+          '15m') as StringValue;
 
         return {
           secret,
           signOptions: {
-            expiresIn,      // StringValue ✓ — khớp type của JwtModule v11
+            expiresIn, // StringValue ✓ — khớp type của JwtModule v11
             algorithm: 'HS256',
           },
         };
@@ -58,16 +57,15 @@ import { AuthController } from './auth.controller';
     }),
   ],
   providers: [
-    JwtStrategy,  // Passport strategy — tự động nhận diện qua naming convention
-    AuthService,  // Business logic: register, login, refresh, logout
+    JwtStrategy, // Passport strategy — tự động nhận diện qua naming convention
+    AuthService, // Business logic: register, login, refresh, logout
   ],
   controllers: [
     AuthController, // HTTP endpoints: POST /auth/register, /login, /refresh, /logout
   ],
   exports: [
-    JwtModule,      // Export để AuthService dùng JwtService.sign()
+    JwtModule, // Export để AuthService dùng JwtService.sign()
     PassportModule, // Export để JwtAuthGuard trong common/ hoạt động đúng
   ],
 })
-export class AuthModule { }
-
+export class AuthModule {}

@@ -7,6 +7,7 @@ import Footer from '@/components/Footer'
 import type { MenuCategory } from '@/types/menu.types'
 import { menuService } from '@/services/modules/menuService'
 import { queryKeys } from '@/constants/queryKeys'
+import { useClientLocale } from '@/contexts/ClientLocaleContext'
 
 interface Feedback {
   id: number
@@ -44,6 +45,7 @@ const feedbacks: Feedback[] = [
 ]
 
 export default function MenuPage() {
+  const { t } = useClientLocale()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const addItem = useCartStore((state) => state.addItem)
@@ -108,10 +110,10 @@ export default function MenuPage() {
         {/* Nội dung chính */}
         <div className="relative z-10 mx-auto max-w-xl px-4">
           <h1 className="font-serif text-4xl !text-white   font-bold tracking-wide sm:text-5xl drop-shadow-md">
-            Food Menu
+            {t('Thực Đơn', 'Food Menu')}
           </h1>
           <p className="mt-3 text-sm font-medium text-orange-400 sm:text-base drop-shadow">
-            Experience the unique and creative flavors from ROMS
+            {t('Trải nghiệm hương vị độc đáo và sáng tạo từ ROMS', 'Experience the unique and creative flavors from ROMS')}
           </p>
         </div>
       </div>
@@ -121,9 +123,9 @@ export default function MenuPage() {
         <div className="mb-12 rounded-3xl border border-orange-200 bg-orange-500/5 p-6 sm:p-8 backdrop-blur">
           <div className="flex items-center gap-2 mb-6">
             <Sparkles className="text-orange-500 fill-orange-500" size={22} />
-            <h2 className="text-xl font-bold text-stone-900 sm:text-2xl">{cartItems.length ? 'Add a pairing' : 'Recommended Dishes for You'}</h2>
+            <h2 className="text-xl font-bold text-stone-900 sm:text-2xl">{cartItems.length ? t('Thêm món phù hợp', 'Add a pairing') : t('Món ăn gợi ý cho bạn', 'Recommended Dishes for You')}</h2>
             <span className="ml-2 rounded-full bg-orange-500 px-3 py-0.5 text-xs font-semibold text-white">
-              {cartItems.length ? 'Pairs well with your cart' : 'Popular picks'}
+              {cartItems.length ? t('Phù hợp với giỏ hàng', 'Pairs well with your cart') : t('Lựa chọn phổ biến', 'Popular picks')}
             </span>
           </div>
 
@@ -162,7 +164,7 @@ export default function MenuPage() {
           <div className="space-y-6">
             {/* CATEGORIES */}
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-stone-100">
-              <h3 className="font-bold text-base text-stone-900 mb-4 border-b border-stone-100 pb-3">Danh Mục (Categories)</h3>
+              <h3 className="font-bold text-base text-stone-900 mb-4 border-b border-stone-100 pb-3">{t('Danh mục', 'Categories')}</h3>
               <div className="space-y-1.5">
                 {categories.map((cat) => {
                   const categoryId = cat === 'All' ? 'All' : cat.id
@@ -180,7 +182,7 @@ export default function MenuPage() {
                         : 'text-stone-600 hover:bg-orange-50 hover:text-orange-500'
                     }`}
                   >
-                    <span>{categoryName}</span>
+                    <span>{categoryName === 'All' ? t('Tất cả', 'All') : categoryName}</span>
                     <span className="text-xs opacity-75">
                       ({categoryCount})
                     </span>
@@ -194,7 +196,7 @@ export default function MenuPage() {
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-stone-100">
               <input
                 type="search"
-                aria-label="Search menu"
+                aria-label={t('Tìm kiếm thực đơn', 'Search menu')}
                 value={searchQuery}
                 onChange={(event) => {
                   const value = event.target.value
@@ -204,12 +206,12 @@ export default function MenuPage() {
                     return current
                   }, { replace: true })
                 }}
-                placeholder="Search dishes"
+                placeholder={t('Tìm món ăn', 'Search dishes')}
                 className="mb-5 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none focus:border-orange-500"
               />
               <h3 className="font-bold text-base text-stone-900 mb-4 border-b border-stone-100 pb-3 flex items-center gap-2">
                 <SlidersHorizontal size={16} className="text-orange-500" />
-                Price Filter
+                {t('Lọc theo giá', 'Price Filter')}
               </h3>
               <input
                 type="range"
@@ -247,7 +249,7 @@ export default function MenuPage() {
 
             {/* POPULAR TAGS */}
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-stone-100">
-              <h3 className="font-bold text-base text-stone-900 mb-4 border-b border-stone-100 pb-3">Popular Tags</h3>
+              <h3 className="font-bold text-base text-stone-900 mb-4 border-b border-stone-100 pb-3">{t('Tags phổ biến', 'Popular Tags')}</h3>
               <div className="flex flex-wrap gap-2">
                 {popularTags.map((tag) => (
                   <button
@@ -269,12 +271,12 @@ export default function MenuPage() {
           {/* RIGHT DISHES GRID */}
           <div className="lg:col-span-3">
             {isMenuLoading || isCategoriesLoading ? (
-              <div className="rounded-2xl bg-white p-12 text-center text-stone-500">Loading menu…</div>
+              <div className="rounded-2xl bg-white p-12 text-center text-stone-500">{t('Đang tải thực đơn…', 'Loading menu…')}</div>
             ) : menuError ? (
-              <div className="rounded-2xl bg-white p-12 text-center text-red-600">Unable to load the menu. Please try again later.</div>
+              <div className="rounded-2xl bg-white p-12 text-center text-red-600">{t('Không thể tải thực đơn. Vui lòng thử lại.', 'Unable to load the menu. Please try again later.')}</div>
             ) : filteredDishes.length === 0 ? (
               <div className="rounded-2xl bg-white p-12 text-center text-stone-500">
-                No dishes match your selected filters.
+                {t('Không có món ăn phù hợp với bộ lọc.', 'No dishes match your selected filters.')}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -332,10 +334,11 @@ export default function MenuPage() {
         <div className="mt-24 rounded-3xl bg-stone-100 p-8 sm:p-12">
           <div className="text-center max-w-xl mx-auto mb-12">
             <h2 className="font-serif text-3xl font-bold sm:text-4xl text-stone-900">
-              Our Customer <span className="text-orange-500">Feedbacks</span>
+              {t('Đánh giá của', 'Our Customer')} <span className="text-orange-500">{t('Khách hàng', 'Feedbacks')}</span>
             </h2>
             <p className="mt-2 text-xs text-stone-500">
-              Every review reflects our commitment to delivering outstanding cuisine, attentive service, and unforgettable dining experiences.            </p>
+              {t('Mỗi đánh giá phản ánh cam kết của chúng tôi trong việc mang đến ẩm thực xuất sắc, dịch vụ tận tâm và trải nghiệm khó quên.', 'Every review reflects our commitment to delivering outstanding cuisine, attentive service, and unforgettable dining experiences.')}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

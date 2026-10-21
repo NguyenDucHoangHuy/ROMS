@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useClientLocale } from '@/contexts/ClientLocaleContext'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
@@ -81,6 +82,7 @@ const services = [
 ]
 
 export default function HomePage() {
+  const { t } = useClientLocale()
   const navigate = useNavigate()
   const addItem = useCartStore((state) => state.addItem)
   const { data: popularDishes = [] } = useQuery({
@@ -149,27 +151,28 @@ export default function HomePage() {
         <div className="mx-auto flex min-h-[660px] max-w-7xl items-center px-6 py-24 sm:px-10 lg:px-16">
           <div className="max-w-2xl">
             <p className="mb-5 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.22em] text-orange-400">
-              <Sparkles size={16} /> A table full of stories
+              <Sparkles size={16} /> {t('Nơi lưu giữ những câu chuyện', 'A table full of stories')}
             </p>
             <h1 className="font-serif text-2xl !text-white font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
-              Delicious food,
-              <span className="font-['Dancing_Script'] block text-orange-400 italic">made with love.</span>
+              {t('Ẩm thực tuyệt hảo,', 'Delicious food,')}
+              <span className="font-['Dancing_Script'] block text-orange-400 italic">{t('làm bằng cả tấm lòng.', 'made with love.')}</span>
             </h1>
             <p className="mt-6 max-w-lg text-base leading-7 text-stone-300 sm:text-lg">
-            Every dish at ROMS combines fresh ingredients, creative inspiration, and the joy of dining together.            </p>
+              {t('Mỗi món ăn tại ROMS kết hợp nguyên liệu tươi ngon, cảm hứng sáng tạo và niềm vui khi cùng nhau thưởng thức.', 'Every dish at ROMS combines fresh ingredients, creative inspiration, and the joy of dining together.')}
+            </p>
 
             <div className="mt-9 flex flex-wrap gap-4">
               <button
                 onClick={() => navigate('/menu')}
                 className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-950/60 transition hover:bg-orange-400"
               >
-                <UtensilsCrossed size={18} />  Explore Our Menu
+                <UtensilsCrossed size={18} /> {t('Khám phá thực đơn', 'Explore Our Menu')}
               </button>
               <button
                 onClick={() => navigate('/reservation')}
                 className="inline-flex items-center gap-2 rounded-full border border-white/50 bg-white/5 px-6 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/15"
               >
-                <CalendarDays size={18} /> Book a Table now
+                <CalendarDays size={18} /> {t('Đặt bàn ngay', 'Book a Table now')}
               </button>
             </div>
 
@@ -208,18 +211,18 @@ export default function HomePage() {
       <section id="about" className="bg-[#fffaf2] px-6 py-20 text-stone-900 sm:px-10 lg:px-16 lg:py-28">
         <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2 lg:gap-20">
           <div>
-            <p className="font-serif text-sm font-bold uppercase tracking-[0.2em] text-orange-500">About ROMS Restaurant</p>
+            <p className="font-serif text-sm font-bold uppercase tracking-[0.2em] text-orange-500">{t('Về nhà hàng ROMS', 'About ROMS Restaurant')}</p>
             <h2 className="mt-4 max-w-md font-serif text-4xl font-semibold leading-tight sm:text-5xl">
-              We serve<span className="text-orange-500 italic"> Happiness.</span>
+              {t('Chúng tôi phục vụ', 'We serve')}<span className="text-orange-500 italic"> {t('Hạnh phúc.', 'Happiness.')}</span>
             </h2>
             <p className="mt-6 max-w-lg leading-7 text-stone-600">
-              ROMS is a place where delicious meals bring people closer together. We pay attention to every detail, from flavors to atmosphere, creating memorable moments for you and your loved ones.
+              {t('ROMS là nơi những bữa ăn ngon gắn kết mọi người lại với nhau. Chúng tôi chú ý đến từng chi tiết, từ hương vị đến không gian, tạo nên những khoảnh khắc đáng nhớ cho bạn và những người thân yêu.', 'ROMS is a place where delicious meals bring people closer together. We pay attention to every detail, from flavors to atmosphere, creating memorable moments for you and your loved ones.')}
             </p>
             <Link
               to="#about"
               className="mt-8 inline-flex items-center gap-2 rounded-full bg-stone-950 px-6 py-3 text-sm font-bold text-white transition hover:bg-orange-500"
             >
-              Learn More About Us <ArrowRight size={17} />
+              {t('Tìm hiểu thêm về chúng tôi', 'Learn More About Us')} <ArrowRight size={17} />
             </Link>
           </div>
 
@@ -233,11 +236,11 @@ export default function HomePage() {
               <span className="grid h-12 w-12 place-items-center rounded-full bg-orange-100 text-orange-500"><ChefHat size={25} /></span>
               <span>
                 <strong className="block text-2xl leading-none text-orange-500">10+</strong>
-                <small className="mt-1 block text-xs font-semibold text-stone-500">Years of Culinary Excellence</small>
+                <small className="mt-1 block text-xs font-semibold text-stone-500">{t('Năm kinh nghiệm ẩm thực', 'Years of Culinary Excellence')}</small>
               </span>
             </div>
             <div className="absolute -right-3 top-8 hidden items-center gap-2 rounded-full bg-stone-950 px-4 py-2 text-xs font-semibold text-white shadow-lg sm:flex">
-              <Clock3 size={15} className="text-orange-400" /> Open every day
+              <Clock3 size={15} className="text-orange-400" /> {t('Mở cửa mỗi ngày', 'Open every day')}
             </div>
           </div>
         </div>
@@ -247,9 +250,9 @@ export default function HomePage() {
       <section className="bg-[#fffaf2] px-6 py-10 text-stone-900 sm:px-10 lg:px-16">
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
-            <p className="font-serif italic text-orange-500 text-lg">Our Menu</p>
+            <p className="font-serif italic text-orange-500 text-lg">{t('Thực đơn của chúng tôi', 'Our Menu')}</p>
             <h2 className="font-serif text-4xl font-bold tracking-tight text-stone-900 sm:text-5xl">
-              Popular Dishes
+              {t('Món ăn phổ biến', 'Popular Dishes')}
             </h2>
             <div className="mt-2 flex items-center justify-center gap-2">
               <span className="h-[1px] w-12 bg-orange-400"></span>
@@ -281,7 +284,7 @@ export default function HomePage() {
                     />
                     {dish.isRecommendable && (
                       <span className="absolute left-3 top-3 rounded-md bg-orange-500 px-2.5 py-1 text-xs font-semibold text-white">
-                        Recommended
+                        {t('Được đề xuất', 'Recommended')}
                       </span>
                     )}
                   </div>
@@ -314,9 +317,9 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           {/* Tiêu đề phần */}
           <div className="text-center">
-            <p className="font-serif italic text-orange-500 text-lg">Our Service</p>
+            <p className="font-serif italic text-orange-500 text-lg">{t('Dịch vụ của chúng tôi', 'Our Service')}</p>
             <h2 className="font-serif text-4xl font-bold tracking-tight text-stone-900 sm:text-5xl">
-              What we focus on
+              {t('Điều chúng tôi tập trung', 'What we focus on')}
             </h2>
             <div className="mt-2 flex items-center justify-center gap-2">
               <span className="h-[1px] w-12 bg-orange-400"></span>
@@ -377,26 +380,26 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-16">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-orange-400"> Opening Hours</p>
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-orange-400">{t('Giờ mở cửa', 'Opening Hours')}</p>
               <h2 className="mt-3 font-serif text-4xl font-bold sm:text-5xl">
-                Restaurant <span className="text-orange-400 italic">Hours</span>
+                {t('Giờ hoạt động', 'Restaurant')} <span className="text-orange-400 italic">{t('Nhà hàng', 'Hours')}</span>
               </h2>
               <p className="mt-4 text-stone-400">
-                We are always ready to welcome you with freshly prepared dishes and an exceptional dining experience.
+                {t('Chúng tôi luôn sẵn sàng chào đón bạn với những món ăn tươi ngon và trải nghiệm ẩm thực tuyệt vời.', 'We are always ready to welcome you with freshly prepared dishes and an exceptional dining experience.')}
               </p>
 
               <div className="mt-8 space-y-4 border-t border-stone-800 pt-6">
                 <div className="flex items-center justify-between border-b border-stone-800/60 pb-3">
-                  <span className="font-semibold text-stone-200">Monday - Friday</span>
+                  <span className="font-semibold text-stone-200">{t('Thứ Hai - Thứ Sáu', 'Monday - Friday')}</span>
                   <span className="font-mono text-orange-400">08:00 AM - 10:00 PM</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-stone-800/60 pb-3">
-                  <span className="font-semibold text-stone-200">Saturday - Sunday</span>
+                  <span className="font-semibold text-stone-200">{t('Thứ Bảy - Chủ Nhật', 'Saturday - Sunday')}</span>
                   <span className="font-mono text-orange-400">07:00 AM - 11:00 PM</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-stone-200">Public Holidays / Tet</span>
-                  <span className="font-semibold text-emerald-400">Open as Usual</span>
+                  <span className="font-semibold text-stone-200">{t('Ngày lễ / Tết', 'Public Holidays / Tet')}</span>
+                  <span className="font-semibold text-emerald-400">{t('Mở cửa bình thường', 'Open as Usual')}</span>
                 </div>
               </div>
 
@@ -404,7 +407,7 @@ export default function HomePage() {
                 onClick={() => navigate('/reservation')}
                 className="mt-8 inline-flex items-center gap-2 rounded-full bg-orange-500 px-8 py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-orange-400"
               >
-                Make a Reservation
+                {t('Đặt bàn ngay', 'Make a Reservation')}
               </button>
             </div>
 
@@ -422,7 +425,7 @@ export default function HomePage() {
                 </video>
               </div>
               <div className="p-4 text-center bg-stone-900">
-                <p className="text-xs font-medium text-stone-400">Discover the Space & Atmosphere of ROMS Restaurant</p>
+                <p className="text-xs font-medium text-stone-400">{t('Khám phá không gian & bầu không khí của nhà hàng ROMS', 'Discover the Space & Atmosphere of ROMS Restaurant')}</p>
               </div>
             </div>
 
@@ -449,9 +452,9 @@ export default function HomePage() {
             <div className="lg:col-span-7 space-y-6">
               {/* Header Titles */}
               <div className="text-center">
-                <p className="font-serif italic text-xl text-amber-800">Contact Us</p>
+                <p className="font-serif italic text-xl text-amber-800">{t('Liên hệ', 'Contact Us')}</p>
                 <h2 className="text-3xl sm:text-4xl font-bold font-serif text-stone-900 mt-1">
-                  Get In Touch with ROMS
+                  {t('Kết nối với ROMS', 'Get In Touch with ROMS')}
                 </h2>
                 {/* Decorative Divider */}
                 <div className="flex items-center justify-center gap-2 mt-3 opacity-60">
@@ -468,7 +471,7 @@ export default function HomePage() {
                   {/* Full Name */}
                   <div>
                     <label className="block text-sm font-semibold text-stone-700 mb-1.5">
-                      Full Name
+                      {t('Họ và tên', 'Full Name')}
                     </label>
                     <div className="relative flex items-center">
                       <Users size={16} className="absolute left-3 text-stone-400" />
@@ -484,7 +487,7 @@ export default function HomePage() {
                   {/* Email */}
                   <div>
                     <label className="block text-sm font-semibold text-stone-700 mb-1.5">
-                      Your email
+                      {t('Email của bạn', 'Your email')}
                     </label>
                     <div className="relative flex items-center">
                       <Mail size={16} className="absolute left-3 text-stone-400" />
@@ -500,7 +503,7 @@ export default function HomePage() {
                   {/* Phone */}
                   <div>
                     <label className="block text-sm font-semibold text-stone-700 mb-1.5">
-                      Your phone
+                      {t('Số điện thoại', 'Your phone')}
                     </label>
                     <div className="relative flex items-center">
                       <Phone size={16} className="absolute left-3 text-stone-400" />
@@ -519,7 +522,7 @@ export default function HomePage() {
                   {/* Message Textarea */}
                   <div className="sm:col-span-7">
                     <label className="block text-sm font-semibold text-stone-700 mb-1.5">
-                      Your message
+                      {t('Tin nhắn của bạn', 'Your message')}
                     </label>
                     <div className="relative">
                       <MessageSquare size={16} className="absolute left-3 top-3 text-stone-400" />
@@ -538,7 +541,7 @@ export default function HomePage() {
                       type="submit"
                       className="w-full rounded-xl bg-[#e65100] hover:bg-[#d84300] py-3.5 text-sm font-semibold text-white shadow-md transition flex items-center justify-center gap-2"
                     >
-                      Send Message <ArrowRight size={18} />
+                      {t('Gửi tin nhắn', 'Send Message')} <ArrowRight size={18} />
                     </button>
                   </div>
                 </div>
@@ -546,7 +549,7 @@ export default function HomePage() {
                 {/* Security Note */}
                 <div className="flex items-center gap-1.5 text-stone-500 text-xs mt-2">
                   <Lock size={13} />
-                  <span>Your information is secure.</span>
+                  <span>{t('Thông tin của bạn được bảo mật.', 'Your information is secure.')}</span>
                 </div>
               </form>
             </div>

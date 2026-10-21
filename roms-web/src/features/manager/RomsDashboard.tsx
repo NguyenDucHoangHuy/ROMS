@@ -50,7 +50,7 @@ const navGroups: readonly NavGroup[] = [
       ["Quản lý thực đơn", Utensils],
       ["Bếp & Đơn hàng", ShoppingBasket],
       ["Đơn hàng & Thanh toán", WalletCards],
-      ["Quản lý nhân sự", Users],
+      ["Điều phối đội ngũ", Users],
       ["Quản lý hồ sơ nhân viên", Users],
       ["Chấm công & Check-in GPS", ClipboardCheck],
       ["Kho nguyên liệu", Package],
@@ -214,10 +214,10 @@ function GenericView({ active }: { active: ViewKey }) {
       "Đơn hàng & Thanh toán",
       "Quản lý hóa đơn, bàn đang phục vụ và trạng thái thanh toán.",
     ],
-    "Quản lý nhân sự": [
+    "Điều phối đội ngũ": [
       "TEAM LOGISTICS",
-      "Danh sách nhân viên",
-      "Quản lý thông tin và trạng thái làm việc của đội ngũ.",
+      "Điều phối đội ngũ",
+      "Giám sát quân số trực, phân bổ vị trí làm việc và chỉ số hiệu suất.",
     ],
     "Quản lý hồ sơ nhân viên": [
         "EMPLOYEE RECORDS",
@@ -302,7 +302,7 @@ export default function RomsDashboard() {
     if (active === "Quản lý thực đơn") return <MenuView />;
     if (active === "Sơ đồ bàn") return <FloorMapView />;
     if (active === "Đơn hàng & Thanh toán") return <OrdersView />;
-    if (active === "Quản lý nhân sự") return <PeopleView />;
+    if (active === "Điều phối đội ngũ" || active === "Quản lý nhân sự") return <PeopleView />;
     if (active === "Phân tích AI") return <AiAnalyticsView />;
     return <GenericView active={active} />;
   }, [active]);

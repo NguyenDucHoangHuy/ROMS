@@ -130,7 +130,10 @@ export class AuthService {
     }
 
     // So sánh mật khẩu với hash trong DB
-    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      user.passwordHash,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid phone number or password');
     }
@@ -290,9 +293,40 @@ export class AuthService {
     // updated.count === 0 nghĩa là token không tồn tại hoặc đã bị revoke
     // Vẫn trả về success để tránh lộ thông tin
     return {
-      message: updated.count > 0
-        ? 'Logged out successfully'
-        : 'Session was already invalidated',
+      message:
+        updated.count > 0
+          ? 'Logged out successfully'
+          : 'Session was already invalidated',
+    };
+  }
+
+  // ============================================================
+  // 5. GET ME — Lấy thông tin user hiện tại từ token
+  // ============================================================
+
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        phone: true,
+        email: true,
+        fullName: true,
+        avatarUrl: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        role: { select: { name: true } },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      ...user,
+      role: user.role.name, // Normalize về string cho FE
     };
   }
 
@@ -311,7 +345,8 @@ export class AuthService {
       // Refresh Token: ký riêng bằng JWT_REFRESH_SECRET, hạn 7d
       this.jwtService.signAsync(payload, {
         secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
-        expiresIn: (this.config.get<string>('JWT_REFRESH_EXPIRY') ?? '7d') as StringValue,
+        expiresIn: (this.config.get<string>('JWT_REFRESH_EXPIRY') ??
+          '7d') as StringValue,
       }),
     ]);
 
