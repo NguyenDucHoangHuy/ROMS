@@ -15,7 +15,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền vị trí để xác thực chấm công tại nhà hàng."
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền vị trí để xác thực chấm công tại nhà hàng.",
+        "NSCameraUsageDescription": "Ứng dụng cần quyền camera để quét mã QR check-in đặt bàn."
       }
     },
     "android": {
@@ -28,10 +29,7 @@
         "ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.CAMERA"
       ],
       "package": "com.anonymous.romsmobile"
     },
@@ -43,6 +41,12 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Cho phép ROMS truy cập vị trí của bạn để thực hiện điểm danh ca làm."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cho phép ROMS truy cập camera để quét mã QR check-in đặt bàn."
         }
       ]
     ],

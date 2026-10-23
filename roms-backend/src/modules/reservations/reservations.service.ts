@@ -107,11 +107,25 @@ export class ReservationsService {
   }
 
   async getByConfirmationCode(code: string) {
+    const trimmed = (code || '').trim();
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        trimmed,
+      );
+
     const reservation = await this.prisma.reservation.findFirst({
-      where: { id: code },
+      where: isUuid
+        ? {
+            OR: [{ id: trimmed }, { guestPhone: trimmed }],
+          }
+        : {
+            guestPhone: trimmed,
+          },
       include: { table: true },
     });
-    if (!reservation) throw new NotFoundException('Reservation code not found');
+    if (!reservation) {
+      throw new NotFoundException('Không tìm thấy thông tin đặt bàn');
+    }
     return reservation;
   }
 
@@ -154,9 +168,23 @@ export class ReservationsService {
       );
     }
 
-    const targetTableId = reservation.tableId;
+    const targetTableId = payload.tableId || reservation.tableId;
+
+    if (!targetTableId) {
+      throw new BadRequestException(
+        'Đơn đặt bàn chưa được gán bàn. Vui lòng gán bàn trước khi check-in.',
+      );
+    }
+
+    const oldTableId = reservation.tableId;
 
     const result = await this.prisma.$transaction(async (tx) => {
+      if (oldTableId && oldTableId !== targetTableId) {
+        await tx.table.update({
+          where: { id: oldTableId },
+          data: { status: TableStatus.AVAILABLE },
+        });
+      }
       // 1. Kiểm tra xem bàn có phiên ăn nào đang mở không
       let session = await tx.diningSession.findFirst({
         where: {
@@ -191,7 +219,10 @@ export class ReservationsService {
       // 3. Cập nhật trạng thái đơn đặt sang COMPLETED
       const updatedReservation = await tx.reservation.update({
         where: { id: payload.id },
-        data: { status: ReservationStatus.COMPLETED },
+        data: {
+          status: ReservationStatus.COMPLETED,
+          tableId: targetTableId,
+        },
         include: { table: true },
       });
 

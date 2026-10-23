@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import {
   Bell,
+  QrCode,
   Users,
   Clock,
   Calendar,
@@ -45,13 +46,23 @@ export const TableMapScreen = () => {
           />
           <Text style={styles.brandTitle}>ROMS</Text>
         </View>
-        <TouchableOpacity
-          style={styles.notifBtn}
-          onPress={() => navigation.navigate(ROUTES.TABS.NOTIFICATIONS)}
-        >
-          <Bell size={22} color={theme.colors.primary} />
-          <View style={styles.notifDot} />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.qrScanBtn}
+            onPress={() => navigation.navigate(ROUTES.STACKS.SCAN_CHECK_IN)}
+            activeOpacity={0.8}
+          >
+            <QrCode size={16} color={theme.colors.textOnPrimary} />
+            <Text style={styles.qrScanBtnText}>Check-in</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.notifBtn}
+            onPress={() => navigation.navigate(ROUTES.TABS.NOTIFICATIONS)}
+          >
+            <Bell size={22} color={theme.colors.primary} />
+            <View style={styles.notifDot} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Zone Tabs */}
@@ -230,6 +241,22 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.sm,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  qrScanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: theme.borderRadius.full,
+    gap: 6,
+    ...theme.shadow.sm,
+  },
+  qrScanBtnText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.extrabold,
+    color: theme.colors.textOnPrimary,
+  },
   avatarImg: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: theme.colors.border },
   brandTitle: { fontSize: theme.fontSize.xxl, fontWeight: theme.fontWeight.extrabold, color: theme.colors.primary, letterSpacing: 1.2 },
   notifBtn: { position: 'relative', padding: 4 },

@@ -12,6 +12,7 @@ import { CreateOrderScreen } from '@/screens/order/CreateOrderScreen'
 import { OrderSummaryScreen } from '@/screens/order/OrderSummaryScreen'
 import { ShiftCheckInScreen } from '@/screens/attendance/ShiftCheckInScreen'
 import { ProfileScreen } from '@/screens/profile/ProfileScreen'
+import { ScanCheckInScreen } from '@/screens/tables/ScanCheckInScreen'
 
 const RootStack = createNativeStackNavigator()
 
@@ -50,6 +51,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name={ROUTES.STACKS.SHIFT_CHECK_IN}
               component={ShiftCheckInScreen}
+              options={{ animation: 'slide_from_bottom' }}
+            />
+            <RootStack.Screen
+              name={ROUTES.STACKS.SCAN_CHECK_IN}
+              component={ScanCheckInScreen}
               options={{ animation: 'slide_from_bottom' }}
             />
             <RootStack.Screen
