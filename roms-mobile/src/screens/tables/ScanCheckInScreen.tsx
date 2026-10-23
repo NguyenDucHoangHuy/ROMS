@@ -309,9 +309,9 @@ export const ScanCheckInScreen = () => {
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={StyleSheet.absoluteFillObject}>
+            <View style={StyleSheet.absoluteFill}>
               <CameraView
-                style={StyleSheet.absoluteFillObject}
+                style={StyleSheet.absoluteFill}
                 facing="back"
                 enableTorch={torch}
                 barcodeScannerSettings={{
@@ -767,7 +767,7 @@ const styles = StyleSheet.create({
   },
 
   overlayLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   overlayTop: {
     flex: 1,
@@ -822,7 +822,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 10,
   },
   searchingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.7)',
     alignItems: 'center',
     justifyContent: 'center',
