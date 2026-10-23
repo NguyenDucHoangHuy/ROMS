@@ -252,15 +252,31 @@ export class ReservationsService {
           data: { status: TableStatus.AVAILABLE },
         });
       }
-      // 1. Kiểm tra xem bàn có phiên ăn nào đang mở không
+      // 1. Tìm xem bàn đã có phiên ăn đang mở thuộc về reservation này chưa
       let session = await tx.diningSession.findFirst({
         where: {
           tableId: targetTableId,
+          reservationId: reservation.id,
           status: { in: [SessionStatus.OPEN, SessionStatus.PAYING] },
         },
       });
 
-      // 2. Nếu chưa có session, tự động khởi tạo DiningSession mới và gắn với reservation
+      // Nếu bàn có phiên ăn cũ của khách khác (hoặc sót từ ca trước), đóng để đón khách mới
+      const staleSessions = await tx.diningSession.findMany({
+        where: {
+          tableId: targetTableId,
+          id: session ? { not: session.id } : undefined,
+          status: { in: [SessionStatus.OPEN, SessionStatus.PAYING] },
+        },
+      });
+      for (const stale of staleSessions) {
+        await tx.diningSession.update({
+          where: { id: stale.id },
+          data: { status: SessionStatus.CLOSED, endTime: new Date() },
+        });
+      }
+
+      // 2. Nếu chưa có phiên ăn cho reservation này, tạo mới
       if (!session) {
         session = await tx.diningSession.create({
           data: {
@@ -272,27 +288,21 @@ export class ReservationsService {
             status: SessionStatus.OPEN,
           },
         });
-      } else if (!session.reservationId) {
-        // Đã có phiên nhưng chưa liên kết reservation
-        session = await tx.diningSession.update({
-          where: { id: session.id },
-          data: {
-            reservationId: reservation.id,
-            customerCount: reservation.partySize || session.customerCount,
-          },
-        });
       }
 
-      // 2.5. Tự động tạo Order chứa các món khách đã đặt trước (nếu có)
+      // 2.5. Tự động tạo Order chứa các món khách đã đặt trước (nếu chưa có trong phiên này)
       if (
         reservation.reservationItems &&
         reservation.reservationItems.length > 0
       ) {
-        const existingOrder = await tx.order.findFirst({
-          where: { sessionId: session.id },
+        const existingPreOrder = await tx.order.findFirst({
+          where: {
+            sessionId: session.id,
+            orderCode: { startsWith: `PRE-${reservation.id.slice(0, 8).toUpperCase()}` },
+          },
         });
 
-        if (!existingOrder) {
+        if (!existingPreOrder) {
           const totalAmount = reservation.reservationItems.reduce(
             (sum, item) => sum + Number(item.unitPrice) * item.quantity,
             0,
@@ -300,7 +310,7 @@ export class ReservationsService {
 
           await tx.order.create({
             data: {
-              orderCode: `ORD-${Date.now()}`,
+              orderCode: `PRE-${reservation.id.slice(0, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`,
               sessionId: session.id,
               waiterId: userId || undefined,
               status: OrderStatus.CREATED,

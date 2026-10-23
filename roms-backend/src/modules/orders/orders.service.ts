@@ -128,17 +128,34 @@ export class OrdersService {
     if (!session)
       throw new NotFoundException('No active session found for this table');
 
-    const order = await this.prisma.order.findFirst({
+    const orders = await this.prisma.order.findMany({
       where: { sessionId: session.id, status: { not: OrderStatus.CANCELLED } },
       include: {
         orderItems: { include: { menuItem: true } },
         session: { include: { table: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
     });
-    if (!order)
+    if (!orders || orders.length === 0)
       throw new NotFoundException('No active order found for this table');
-    return order;
+
+    if (orders.length === 1) {
+      return orders[0];
+    }
+
+    // Nếu bàn có nhiều đơn (VD: Đơn món đặt trước + Đơn gọi thêm tại bàn), gộp tất cả món
+    const allItems = orders.flatMap((o) => o.orderItems);
+    const totalAmount = orders.reduce(
+      (sum, o) => sum + Number(o.totalAmount || 0),
+      0,
+    );
+    const latestOrder = orders[orders.length - 1];
+
+    return {
+      ...latestOrder,
+      totalAmount,
+      orderItems: allItems,
+    };
   }
 
   async getKitchenQueue() {
