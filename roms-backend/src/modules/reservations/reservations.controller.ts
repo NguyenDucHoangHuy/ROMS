@@ -109,7 +109,7 @@ export class ReservationsController {
   @Patch(':id/table')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleName.MANAGER, RoleName.ADMIN)
+  @Roles(RoleName.WAITER, RoleName.MANAGER, RoleName.ADMIN)
   @ApiOperation({ summary: 'Gán bàn cho đặt bàn' })
   assignTable(@Param('id') id: string, @Body() body: { tableId: string }) {
     return this.reservationsService.assignTable(id, body.tableId);

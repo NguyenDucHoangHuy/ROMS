@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,148 +7,148 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import {
-  CheckCheck,
   Bell,
   Utensils,
-  Wine,
   Receipt,
-  AlertCircle,
+  CheckCheck,
+  ChevronLeft,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '@/theme';
 import { ScreenWrapper } from '@/components/common/ScreenWrapper';
+import { ROUTES } from '@/constants/routes';
+import { getSocketClient } from '@/services/socket';
 
-const RECENT_NOTIFS = [
+interface NotificationItem {
+  id: string;
+  tableId?: string;
+  tableNumber?: string;
+  title: string;
+  desc: string;
+  time: string;
+  unread: boolean;
+  type: 'dish_ready' | 'order_opened' | 'general';
+}
+
+const INITIAL_NOTIFS: NotificationItem[] = [
   {
     id: 'n1',
-    table: 'Table 12',
-    title: 'Mains are ready',
-    desc: '2x Filet Mignon, 1x Seared Scallops',
-    time: 'Just now',
-    icon: Utensils,
-    iconBg: '#FDF3E3',
-    iconColor: '#BA833F',
-    unread: true,
-  },
-  {
-    id: 'n2',
-    table: 'Table 04',
-    title: 'Service requested',
-    desc: 'Guest pressed the call button.',
-    time: '2m ago',
-    icon: Bell,
-    iconBg: '#FEE2E2',
-    iconColor: '#DC2626',
-    unread: true,
-  },
-  {
-    id: 'n3',
-    table: 'Table 08',
-    title: 'Drinks ready at bar',
-    desc: 'Round of signature cocktails.',
-    time: '5m ago',
-    icon: Wine,
-    iconBg: '#FEF3C7',
-    iconColor: '#D97706',
-    unread: true,
-  },
-];
-
-const EARLIER_NOTIFS = [
-  {
-    id: 'n4',
-    table: 'Table 21',
-    title: 'Bill requested',
-    desc: 'Guest is ready to pay.',
-    time: '18m ago',
-    icon: Receipt,
-    iconBg: '#F5F5F4',
-    iconColor: '#78716C',
+    title: 'Hệ thống sẵn sàng',
+    desc: 'Chào mừng bạn đến với ca làm việc ROMS Waiter.',
+    time: 'Vừa xong',
     unread: false,
-  },
-  {
-    id: 'n5',
-    table: 'System',
-    title: 'Menu 86 Update',
-    desc: 'Truffle Risotto is out of stock.',
-    time: '1h ago',
-    icon: AlertCircle,
-    iconBg: '#F5F5F4',
-    iconColor: '#78716C',
-    unread: false,
+    type: 'general',
   },
 ];
 
 export const NotificationsScreen = () => {
   const navigation = useNavigation<any>();
+  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFS);
+
+  useEffect(() => {
+    const socket = getSocketClient();
+
+    const handleItemUpdate = (payload: any) => {
+      if (payload?.status === 'READY') {
+        const newNotif: NotificationItem = {
+          id: `notif-${Date.now()}`,
+          tableId: payload.tableId,
+          title: 'Món ăn đã nấu xong! 🍽️',
+          desc: `Bếp đã chuẩn bị xong món. Vui lòng bưng ra phục vụ khách.`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          unread: true,
+          type: 'dish_ready',
+        };
+        setNotifications((prev) => [newNotif, ...prev]);
+      } else if (payload?.status === 'OPENED') {
+        const newNotif: NotificationItem = {
+          id: `notif-${Date.now()}`,
+          tableId: payload.tableId,
+          title: 'Khách vừa Check-in nhận bàn! 🎉',
+          desc: `Đã mở phiên ăn cho bàn. Nhân viên có thể vào phục vụ khách.`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          unread: true,
+          type: 'order_opened',
+        };
+        setNotifications((prev) => [newNotif, ...prev]);
+      }
+    };
+
+    socket.on('order:item-updated', handleItemUpdate);
+    return () => {
+      socket.off('order:item-updated', handleItemUpdate);
+    };
+  }, []);
+
+  const handleMarkAllRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  };
+
+  const handleNotificationPress = (notif: NotificationItem) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notif.id ? { ...n, unread: false } : n))
+    );
+
+    if (notif.tableId) {
+      navigation.navigate(ROUTES.STACKS.TABLE_DETAIL, {
+        tableId: notif.tableId,
+        tableNumber: notif.tableNumber || '',
+      });
+    }
+  };
+
   return (
     <ScreenWrapper>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-          <View style={styles.headerAvatar} />
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <ChevronLeft size={22} color={theme.colors.text} />
+          <Text style={styles.headerTitle}>Thông báo</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>ROMS</Text>
-        <Bell size={18} color={theme.colors.textSecondary} />
-      </View>
-
-      {/* Section Title */}
-      <View style={styles.titleSection}>
-        <View>
-          <Text style={styles.mainTitle}>Alerts</Text>
-          <Text style={styles.subTitle}>3 new notifications</Text>
-        </View>
-        <TouchableOpacity style={styles.markReadBtn}>
-          <CheckCheck size={14} color={theme.colors.primaryDark} />
-          <Text style={styles.markReadText}>Mark all as read</Text>
+        <TouchableOpacity style={styles.markReadBtn} onPress={handleMarkAllRead}>
+          <CheckCheck size={16} color={theme.colors.primary} />
+          <Text style={styles.markReadText}>Đọc tất cả</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.listScroll} showsVerticalScrollIndicator={false}>
-        {/* Recent Alerts */}
-        <View style={styles.group}>
-          {RECENT_NOTIFS.map((item) => {
-            const IconComp = item.icon;
-            return (
-              <View key={item.id} style={styles.notifCard}>
-                <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
-                  <IconComp size={16} color={item.iconColor} />
-                </View>
-                <View style={styles.notifContent}>
-                  <View style={styles.notifRow}>
-                    <Text style={styles.tableText}>{item.table}</Text>
-                    <Text style={styles.timeText}>{item.time}</Text>
-                  </View>
-                  <Text style={styles.itemTitle}>{item.title}</Text>
-                  <Text style={styles.itemDesc}>{item.desc}</Text>
-                </View>
-                {item.unread && <View style={styles.unreadDot} />}
+      <ScrollView contentContainerStyle={styles.scrollArea}>
+        <View style={styles.listWrapper}>
+          {notifications.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[styles.notifCard, item.unread && styles.notifCardUnread]}
+              onPress={() => handleNotificationPress(item)}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.iconWrap,
+                  item.type === 'dish_ready'
+                    ? styles.iconWrapReady
+                    : styles.iconWrapDefault,
+                ]}
+              >
+                {item.type === 'dish_ready' ? (
+                  <Utensils size={18} color="#15803D" />
+                ) : (
+                  <Bell size={18} color={theme.colors.primary} />
+                )}
               </View>
-            );
-          })}
-        </View>
 
-        {/* Earlier Section */}
-        <Text style={styles.sectionDividerText}>EARLIER</Text>
-        <View style={styles.group}>
-          {EARLIER_NOTIFS.map((item) => {
-            const IconComp = item.icon;
-            return (
-              <View key={item.id} style={styles.notifCard}>
-                <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
-                  <IconComp size={16} color={item.iconColor} />
+              <View style={{ flex: 1 }}>
+                <View style={styles.titleRow}>
+                  <Text style={styles.notifTitle}>{item.title}</Text>
+                  <Text style={styles.timeText}>{item.time}</Text>
                 </View>
-                <View style={styles.notifContent}>
-                  <View style={styles.notifRow}>
-                    <Text style={styles.tableText}>{item.table}</Text>
-                    <Text style={styles.timeText}>{item.time}</Text>
-                  </View>
-                  <Text style={styles.itemTitle}>{item.title}</Text>
-                  <Text style={styles.itemDesc}>{item.desc}</Text>
-                </View>
+                <Text style={styles.notifDesc}>{item.desc}</Text>
               </View>
-            );
-          })}
+              {item.unread && <View style={styles.unreadDot} />}
+            </TouchableOpacity>
+          ))}
         </View>
       </ScrollView>
     </ScreenWrapper>
@@ -156,66 +156,66 @@ export const NotificationsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  headerAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: theme.colors.border },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: theme.colors.text, letterSpacing: 1 },
-  titleSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  mainTitle: { fontSize: 22, fontWeight: '800', color: theme.colors.text },
-  subTitle: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: theme.colors.text },
   markReadBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  markReadText: { fontSize: 11, fontWeight: '600', color: theme.colors.primaryDark },
-  listScroll: { paddingHorizontal: 16, paddingBottom: 80, gap: 10 },
-  group: { gap: 10 },
-  sectionDividerText: {
-    fontSize: 11,
+  markReadText: {
+    fontSize: 12,
     fontWeight: '700',
-    color: theme.colors.textMuted,
-    letterSpacing: 1,
-    marginTop: 12,
-    marginBottom: 4,
-    paddingHorizontal: 4,
+    color: theme.colors.primary,
   },
+
+  scrollArea: { paddingHorizontal: 16, paddingBottom: 40, paddingTop: 10 },
+  listWrapper: { gap: 10 },
   notifCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    borderRadius: 18,
     padding: 14,
+    borderRadius: theme.borderRadius.xl,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    gap: 12,
+    ...theme.shadow.sm,
   },
-  iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+  notifCardUnread: {
+    backgroundColor: '#FFFBF7',
+    borderColor: theme.colors.occupiedBorder,
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  notifContent: { flex: 1 },
-  notifRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  tableText: { fontSize: 13, fontWeight: '700', color: theme.colors.text },
-  timeText: { fontSize: 10, color: theme.colors.textMuted },
-  itemTitle: { fontSize: 13, fontWeight: '600', color: theme.colors.text, marginTop: 2 },
-  itemDesc: { fontSize: 11, color: theme.colors.textSecondary, marginTop: 1 },
+  iconWrapReady: { backgroundColor: '#DCFCE7' },
+  iconWrapDefault: { backgroundColor: theme.colors.primaryLight },
+
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  notifTitle: { fontSize: 14, fontWeight: '700', color: theme.colors.text },
+  timeText: { fontSize: 11, color: theme.colors.textMuted },
+  notifDesc: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 16,
+  },
   unreadDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: theme.colors.error,
-    marginLeft: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.primary,
   },
 });

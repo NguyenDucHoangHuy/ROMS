@@ -91,7 +91,15 @@ export default function DepositPage() {
 
       const combinedNotes = noteParts.length > 0 ? noteParts.join(' ') : undefined
 
+      const itemsPayload = (bookingData.items || []).map((i: any) => ({
+        menuItemId: i.menuItem.id,
+        quantity: i.quantity,
+        unitPrice: Number(i.menuItem.price),
+        notes: i.notes || undefined,
+      }));
+
       const payload: CreateReservationPayload = {
+        items: itemsPayload.length > 0 ? itemsPayload : undefined,
         guestName,
         guestPhone,
         partySize: bookingData.partySize || 2,

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsArray,
   IsDateString,
   IsEnum,
   IsInt,
@@ -9,8 +10,32 @@ import {
   IsString,
   IsUUID,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { DepositStatus } from '@prisma/client';
+
+export class ReservationItemDto {
+  @ApiProperty({ description: 'ID món ăn' })
+  @IsUUID()
+  @IsNotEmpty()
+  menuItemId: string;
+
+  @ApiProperty({ description: 'Số lượng món', example: 2 })
+  @IsInt()
+  @Min(1)
+  quantity: number;
+
+  @ApiPropertyOptional({ description: 'Đơn giá món', example: 12.5 })
+  @IsOptional()
+  @IsNumber()
+  unitPrice?: number;
+
+  @ApiPropertyOptional({ description: 'Ghi chú cho món ăn', example: 'Ít đường, không đá' })
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
 
 export class CreateReservationDto {
   @ApiProperty({ example: 'Nguyễn Văn B' })
@@ -51,4 +76,11 @@ export class CreateReservationDto {
   @IsOptional()
   @IsEnum(DepositStatus)
   depositStatus?: DepositStatus;
+
+  @ApiPropertyOptional({ type: [ReservationItemDto], description: 'Danh sách món ăn đặt trước' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ReservationItemDto)
+  items?: ReservationItemDto[];
 }

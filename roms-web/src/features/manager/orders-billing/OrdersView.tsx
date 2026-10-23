@@ -68,6 +68,7 @@ export default function OrdersView() {
   // Modals state
   const [selectedOrderForBill, setSelectedOrderForBill] = useState<any | null>(null);
   const [selectedResForAssign, setSelectedResForAssign] = useState<any | null>(null);
+  const [selectedResForItems, setSelectedResForItems] = useState<any | null>(null);
   const [assignedTableId, setAssignedTableId] = useState<string>("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -1172,6 +1173,7 @@ export default function OrdersView() {
                         <th>{t("KHÁCH HÀNG", "GUEST")}</th>
                         <th>{t("NGÀY & GIỜ HẸN", "RESERVATION TIME")}</th>
                         <th>{t("SỐ KHÁCH", "PARTY SIZE")}</th>
+                        <th>{t("MÓN ĐẶT TRƯỚC", "PRE-ORDERED DISHES")}</th>
                         <th>{t("BÀN ĐÃ GÁN", "ASSIGNED TABLE")}</th>
                         <th>{t("TIỀN CỌC", "DEPOSIT")}</th>
                         <th>{t("TRẠNG THÁI", "STATUS")}</th>
@@ -1218,6 +1220,22 @@ export default function OrdersView() {
                               <span style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
                                 <Users size={14} color="#ea580c" /> {res.partySize} {t("người", "guests")}
                               </span>
+                            </td>
+
+                            <td>
+                              {res.reservationItems && res.reservationItems.length > 0 ? (
+                                <button
+                                  className="ob-btn ob-btn-secondary"
+                                  style={{ height: 28, fontSize: 11, padding: "0 8px", display: "inline-flex", alignItems: "center", gap: 4 }}
+                                  onClick={() => setSelectedResForItems(res)}
+                                  title={t("Xem chi tiết các món khách đặt", "View pre-ordered dishes")}
+                                >
+                                  <Utensils size={12} color="#ea580c" />
+                                  <b style={{ color: "#ea580c" }}>{res.reservationItems.length} {t("món", "dishes")}</b>
+                                </button>
+                              ) : (
+                                <span style={{ color: "#a8a29e", fontSize: 12 }}>{t("Không có", "None")}</span>
+                              )}
                             </td>
 
                             <td>
@@ -1660,6 +1678,21 @@ export default function OrdersView() {
                         📌 <i>{scannedReservation.specialRequest}</i>
                       </div>
                     )}
+                    {scannedReservation.reservationItems && scannedReservation.reservationItems.length > 0 && (
+                      <div style={{ gridColumn: "span 2", marginTop: 8, background: "#fef3c7", padding: "10px 12px", borderRadius: 8, border: "1px solid #fde68a" }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                          <Utensils size={14} /> {t("Món ăn khách đã gọi trước:", "Pre-ordered Dishes:")} ({scannedReservation.reservationItems.length} món)
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {scannedReservation.reservationItems.map((item: any) => (
+                            <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#78350f" }}>
+                              <span>• <b>{item.menuItem?.name || 'Món'}</b> × {item.quantity}</span>
+                              <b>${(Number(item.unitPrice) * item.quantity).toFixed(2)}</b>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Chọn / Xác nhận bàn Check-in */}
@@ -1730,6 +1763,104 @@ export default function OrdersView() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════
+          MODAL: XEM CHI TIẾT MÓN ĂN ĐẶT TRƯỚC
+          ═══════════════════════════════════════════════════════ */}
+      {selectedResForItems && (
+        <div className="ob-modal-overlay" onClick={() => setSelectedResForItems(null)}>
+          <div className="ob-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="ob-modal-accent" />
+            <div className="ob-modal-header">
+              <h2>{t("Danh sách món ăn đặt trước", "Pre-ordered Dishes")}</h2>
+              <button className="ob-modal-close" onClick={() => setSelectedResForItems(null)}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="ob-modal-body">
+              <div style={{ marginBottom: 16, background: "#fdf8f4", border: "1px solid #fed7aa", padding: "12px 14px", borderRadius: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <b style={{ fontSize: 15, color: "#1a1714" }}>{selectedResForItems.guestName}</b>
+                  <div style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}>
+                    📞 {selectedResForItems.guestPhone} • Mã: <strong style={{ color: "#ea580c" }}>#{selectedResForItems.id.slice(0, 8).toUpperCase()}</strong>
+                  </div>
+                </div>
+                <span className="ob-badge-confirmed" style={{ fontSize: 11, padding: "3px 8px" }}>
+                  {selectedResForItems.reservationItems?.length || 0} {t("món", "dishes")}
+                </span>
+              </div>
+
+              {selectedResForItems.reservationItems && selectedResForItems.reservationItems.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto", paddingRight: 4 }}>
+                  {selectedResForItems.reservationItems.map((item: any) => (
+                    <div
+                      key={item.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 12px",
+                        background: "#ffffff",
+                        border: "1px solid #e7e2dc",
+                        borderRadius: 10,
+                        gap: 12,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                        {item.menuItem?.imageUrl ? (
+                          <img
+                            src={item.menuItem.imageUrl}
+                            alt={item.menuItem.name}
+                            style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", flexShrink: 0 }}
+                          />
+                        ) : (
+                          <div style={{ width: 44, height: 44, borderRadius: 8, background: "#f5f5f4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+                            🍽️
+                          </div>
+                        )}
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1714", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {item.menuItem?.name || "Món ăn"}
+                          </div>
+                          <div style={{ fontSize: 11.5, color: "#78716c", marginTop: 2 }}>
+                            ${Number(item.unitPrice).toFixed(2)} × <b>{item.quantity}</b>
+                            {item.notes ? ` • Ghi chú: ${item.notes}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                      <b style={{ color: "#ea580c", fontSize: 14, flexShrink: 0 }}>
+                        ${(Number(item.unitPrice) * item.quantity).toFixed(2)}
+                      </b>
+                    </div>
+                  ))}
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 10, borderTop: "1px solid #e7e2dc", fontSize: 14 }}>
+                    <b>{t("Tổng tiền món đặt trước:", "Pre-order Total:")}</b>
+                    <b style={{ color: "#ea580c", fontSize: 16 }}>
+                      ${selectedResForItems.reservationItems.reduce((sum, it) => sum + Number(it.unitPrice) * it.quantity, 0).toFixed(2)}
+                    </b>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: "center", padding: "24px 12px", color: "#78716c", fontSize: 13 }}>
+                  {t("Đơn này khách không đặt trước món ăn.", "No pre-ordered dishes for this reservation.")}
+                </div>
+              )}
+
+              <div style={{ marginTop: 20 }}>
+                <button
+                  type="button"
+                  className="ob-btn ob-btn-secondary"
+                  style={{ width: "100%", height: 38 }}
+                  onClick={() => setSelectedResForItems(null)}
+                >
+                  {t("Đóng", "Close")}
+                </button>
+              </div>
             </div>
           </div>
         </div>

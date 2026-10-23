@@ -222,9 +222,10 @@ model MenuItem {
   isAvailable      Boolean  @default(true) @map("is_available")
   isRecommendable Boolean  @default(false) @map("is_recommendable")
 
-  category   Category    @relation(fields: [categoryId], references: [id])
-  orderItems OrderItem[]
-  recipes    Recipe[]
+  category         Category          @relation(fields: [categoryId], references: [id])
+  orderItems       OrderItem[]
+  recipes          Recipe[]
+  reservationItems ReservationItem[]
 
   @@map("menu_items")
 }
@@ -248,10 +249,26 @@ model Reservation {
 
   customer       User?           @relation(fields: [customerId], references: [id])
   table          Table?          @relation(fields: [tableId], references: [id])
-  diningSessions DiningSession[]
+  diningSessions   DiningSession[]
+  reservationItems ReservationItem[]
 
   @@map("reservations")
 }
+
+model ReservationItem {
+  id            String      @id @default(uuid()) @db.Uuid
+  reservationId String      @map("reservation_id") @db.Uuid
+  menuItemId    String      @map("menu_item_id") @db.Uuid
+  quantity      Int         @default(1)
+  unitPrice     Decimal     @map("unit_price") @db.Decimal(12, 2)
+  notes         String?
+
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  menuItem      MenuItem    @relation(fields: [menuItemId], references: [id])
+
+  @@map("reservation_items")
+}
+
 
 model DiningSession {
   id            String        @id @default(uuid()) @db.Uuid

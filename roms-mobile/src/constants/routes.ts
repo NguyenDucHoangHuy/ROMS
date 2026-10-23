@@ -14,5 +14,6 @@ export const ROUTES = {
     CREATE_ORDER: 'CreateOrder',
     ORDER_SUMMARY: 'OrderSummary',
     SHIFT_CHECK_IN: 'ShiftCheckIn',
+    SCAN_CHECK_IN: 'ScanCheckIn',
   },
 } as const

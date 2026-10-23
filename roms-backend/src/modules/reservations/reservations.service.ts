@@ -7,6 +7,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import {
   DepositStatus,
+  OrderItemStatus,
+  OrderStatus,
   ReservationStatus,
   SessionStatus,
   TableStatus,
@@ -21,6 +23,27 @@ export class ReservationsService {
   ) {}
 
   async create(dto: CreateReservationDto, customerId?: string) {
+    // Nếu có items đặt trước, tìm giá món nếu chưa có
+    let itemsToCreate: any[] = [];
+    if (dto.items && dto.items.length > 0) {
+      const menuIds = dto.items.map((i) => i.menuItemId);
+      const menuItems = await this.prisma.menuItem.findMany({
+        where: { id: { in: menuIds } },
+        select: { id: true, price: true },
+      });
+      const priceMap = new Map(menuItems.map((m) => [m.id, Number(m.price)]));
+
+      itemsToCreate = dto.items.map((item) => ({
+        menuItemId: item.menuItemId,
+        quantity: item.quantity,
+        unitPrice:
+          item.unitPrice !== undefined
+            ? Number(item.unitPrice)
+            : priceMap.get(item.menuItemId) || 0,
+        notes: item.notes,
+      }));
+    }
+
     return this.prisma.reservation.create({
       data: {
         customerId: customerId || undefined,
@@ -32,9 +55,19 @@ export class ReservationsService {
         tableId: dto.tableId,
         depositAmount: dto.depositAmount ? Number(dto.depositAmount) : 0,
         depositStatus: dto.depositStatus || DepositStatus.PENDING,
+        ...(itemsToCreate.length > 0
+          ? {
+              reservationItems: {
+                create: itemsToCreate,
+              },
+            }
+          : {}),
       },
       include: {
         table: true,
+        reservationItems: {
+          include: { menuItem: true },
+        },
       },
     });
   }
@@ -42,14 +75,24 @@ export class ReservationsService {
   async findAll() {
     return this.prisma.reservation.findMany({
       orderBy: { reservationTime: 'desc' },
-      include: { table: true },
+      include: {
+        table: true,
+        reservationItems: {
+          include: { menuItem: true },
+        },
+      },
     });
   }
 
   async findOne(id: string) {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id },
-      include: { table: true },
+      include: {
+        table: true,
+        reservationItems: {
+          include: { menuItem: true },
+        },
+      },
     });
     if (!reservation) throw new NotFoundException('Reservation not found');
     return reservation;
@@ -64,7 +107,12 @@ export class ReservationsService {
     const updated = await this.prisma.reservation.update({
       where: { id },
       data: { status: ReservationStatus.CONFIRMED },
-      include: { table: true },
+      include: {
+        table: true,
+        reservationItems: {
+          include: { menuItem: true },
+        },
+      },
     });
 
     // Nếu đơn đặt đã có bàn, cập nhật bàn sang trạng thái RESERVED
@@ -87,7 +135,12 @@ export class ReservationsService {
     const updated = await this.prisma.reservation.update({
       where: { id },
       data: { status: ReservationStatus.CANCELLED },
-      include: { table: true },
+      include: {
+        table: true,
+        reservationItems: {
+          include: { menuItem: true },
+        },
+      },
     });
 
     // Nếu đơn đã có bàn và bàn đang là RESERVED, giải phóng bàn về AVAILABLE
@@ -107,11 +160,30 @@ export class ReservationsService {
   }
 
   async getByConfirmationCode(code: string) {
+    const trimmed = (code || '').trim();
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        trimmed,
+      );
+
     const reservation = await this.prisma.reservation.findFirst({
-      where: { id: code },
-      include: { table: true },
+      where: isUuid
+        ? {
+            OR: [{ id: trimmed }, { guestPhone: trimmed }],
+          }
+        : {
+            guestPhone: trimmed,
+          },
+      include: {
+        table: true,
+        reservationItems: {
+          include: { menuItem: true },
+        },
+      },
     });
-    if (!reservation) throw new NotFoundException('Reservation code not found');
+    if (!reservation) {
+      throw new NotFoundException('Không tìm thấy thông tin đặt bàn');
+    }
     return reservation;
   }
 
@@ -128,7 +200,12 @@ export class ReservationsService {
           lt: tomorrow,
         },
       },
-      include: { table: true },
+      include: {
+        table: true,
+        reservationItems: {
+          include: { menuItem: true },
+        },
+      },
       orderBy: { reservationTime: 'asc' },
     });
   }
@@ -136,7 +213,12 @@ export class ReservationsService {
   async findMyReservations(customerId: string) {
     return this.prisma.reservation.findMany({
       where: { customerId },
-      include: { table: true },
+      include: {
+        table: true,
+        reservationItems: {
+          include: { menuItem: true },
+        },
+      },
       orderBy: { reservationTime: 'desc' },
     });
   }
@@ -144,28 +226,57 @@ export class ReservationsService {
   async checkIn(payload: any, userId?: string) {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id: payload.id },
-      include: { table: true },
+      include: {
+        table: true,
+        reservationItems: {
+          include: { menuItem: true },
+        },
+      },
     });
     if (!reservation) throw new NotFoundException('Reservation not found');
 
-    if (!reservation.tableId) {
+    const targetTableId = payload.tableId || reservation.tableId;
+
+    if (!targetTableId) {
       throw new BadRequestException(
         'Đơn đặt bàn chưa được gán bàn. Vui lòng gán bàn trước khi check-in.',
       );
     }
 
-    const targetTableId = reservation.tableId;
+    const oldTableId = reservation.tableId;
 
     const result = await this.prisma.$transaction(async (tx) => {
-      // 1. Kiểm tra xem bàn có phiên ăn nào đang mở không
+      if (oldTableId && oldTableId !== targetTableId) {
+        await tx.table.update({
+          where: { id: oldTableId },
+          data: { status: TableStatus.AVAILABLE },
+        });
+      }
+      // 1. Tìm xem bàn đã có phiên ăn đang mở thuộc về reservation này chưa
       let session = await tx.diningSession.findFirst({
         where: {
           tableId: targetTableId,
+          reservationId: reservation.id,
           status: { in: [SessionStatus.OPEN, SessionStatus.PAYING] },
         },
       });
 
-      // 2. Nếu chưa có session, tự động khởi tạo DiningSession mới và gắn với reservation
+      // Nếu bàn có phiên ăn cũ của khách khác (hoặc sót từ ca trước), đóng để đón khách mới
+      const staleSessions = await tx.diningSession.findMany({
+        where: {
+          tableId: targetTableId,
+          id: session ? { not: session.id } : undefined,
+          status: { in: [SessionStatus.OPEN, SessionStatus.PAYING] },
+        },
+      });
+      for (const stale of staleSessions) {
+        await tx.diningSession.update({
+          where: { id: stale.id },
+          data: { status: SessionStatus.CLOSED, endTime: new Date() },
+        });
+      }
+
+      // 2. Nếu chưa có phiên ăn cho reservation này, tạo mới
       if (!session) {
         session = await tx.diningSession.create({
           data: {
@@ -177,22 +288,60 @@ export class ReservationsService {
             status: SessionStatus.OPEN,
           },
         });
-      } else if (!session.reservationId) {
-        // Đã có phiên nhưng chưa liên kết reservation
-        session = await tx.diningSession.update({
-          where: { id: session.id },
-          data: {
-            reservationId: reservation.id,
-            customerCount: reservation.partySize || session.customerCount,
+      }
+
+      // 2.5. Tự động tạo Order chứa các món khách đã đặt trước (nếu chưa có trong phiên này)
+      if (
+        reservation.reservationItems &&
+        reservation.reservationItems.length > 0
+      ) {
+        const existingPreOrder = await tx.order.findFirst({
+          where: {
+            sessionId: session.id,
+            orderCode: { startsWith: `PRE-${reservation.id.slice(0, 8).toUpperCase()}` },
           },
         });
+
+        if (!existingPreOrder) {
+          const totalAmount = reservation.reservationItems.reduce(
+            (sum, item) => sum + Number(item.unitPrice) * item.quantity,
+            0,
+          );
+
+          await tx.order.create({
+            data: {
+              orderCode: `PRE-${reservation.id.slice(0, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`,
+              sessionId: session.id,
+              waiterId: userId || undefined,
+              status: OrderStatus.CREATED,
+              totalAmount: totalAmount,
+              orderItems: {
+                create: reservation.reservationItems.map((item) => ({
+                  menuItemId: item.menuItemId,
+                  quantity: item.quantity,
+                  unitPrice: item.unitPrice,
+                  notes: item.notes || 'Món đặt trước qua Reservation',
+                  itemStatus: OrderItemStatus.PENDING,
+                })),
+              },
+            },
+          });
+        }
       }
 
       // 3. Cập nhật trạng thái đơn đặt sang COMPLETED
       const updatedReservation = await tx.reservation.update({
         where: { id: payload.id },
-        data: { status: ReservationStatus.COMPLETED },
-        include: { table: true },
+        data: {
+          status: ReservationStatus.COMPLETED,
+          tableId: targetTableId,
+        },
+        include: {
+          table: true,
+          reservationItems: {
+            include: { menuItem: true },
+          },
+        },
       });
 
       // 4. Khóa bàn sang OCCUPIED (Đỏ - Đang phục vụ)
@@ -213,7 +362,6 @@ export class ReservationsService {
         status: 'OPENED',
       });
     } catch (e) {
-      // Gateway emit fallback nếu có lỗi kết nối
       console.error('Lỗi emit socket check-in:', e);
     }
 
@@ -228,48 +376,49 @@ export class ReservationsService {
 
     const oldTableId = reservation.tableId;
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      // 1. Cập nhật bàn mới cho đơn đặt bàn
-      const res = await tx.reservation.update({
-        where: { id },
-        data: { tableId: newTableId },
-        include: { table: true },
-      });
+    const targetTable = await this.prisma.table.findUnique({
+      where: { id: newTableId },
+    });
+    if (!targetTable) throw new NotFoundException('Table not found');
 
-      // 2. Nếu đơn đã ở trạng thái CONFIRMED
-      if (reservation.status === ReservationStatus.CONFIRMED) {
-        // Chuyển bàn mới sang RESERVED
-        await tx.table.update({
-          where: { id: newTableId },
-          data: { status: TableStatus.RESERVED },
+    const result = await this.prisma.$transaction(async (tx) => {
+      if (oldTableId && oldTableId !== newTableId) {
+        const oldTable = await tx.table.findUnique({
+          where: { id: oldTableId },
         });
-
-        // Nếu trước đó đã có bàn cũ khác bàn mới, kiểm tra giải phóng bàn cũ về AVAILABLE
-        if (oldTableId && oldTableId !== newTableId) {
-          const otherConfirmed = await tx.reservation.findFirst({
-            where: {
-              tableId: oldTableId,
-              status: ReservationStatus.CONFIRMED,
-              id: { not: id },
-            },
+        if (oldTable && oldTable.status === TableStatus.RESERVED) {
+          await tx.table.update({
+            where: { id: oldTableId },
+            data: { status: TableStatus.AVAILABLE },
           });
-          if (!otherConfirmed) {
-            const oldTable = await tx.table.findUnique({
-              where: { id: oldTableId },
-            });
-            if (oldTable && oldTable.status === TableStatus.RESERVED) {
-              await tx.table.update({
-                where: { id: oldTableId },
-                data: { status: TableStatus.AVAILABLE },
-              });
-            }
-          }
         }
       }
 
-      return res;
+      const updated = await tx.reservation.update({
+        where: { id },
+        data: {
+          tableId: newTableId,
+          status:
+            reservation.status === ReservationStatus.PENDING
+              ? ReservationStatus.CONFIRMED
+              : reservation.status,
+        },
+        include: {
+          table: true,
+          reservationItems: {
+            include: { menuItem: true },
+          },
+        },
+      });
+
+      await tx.table.update({
+        where: { id: newTableId },
+        data: { status: TableStatus.RESERVED },
+      });
+
+      return updated;
     });
 
-    return updated;
+    return result;
   }
 }

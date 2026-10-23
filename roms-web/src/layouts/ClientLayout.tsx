@@ -90,7 +90,7 @@ function ClientLayoutInner() {
               <span className={locale === 'vi' ? 'text-orange-500' : 'text-stone-400'}>VI</span>
             </button>
             <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="grid h-10 w-10 place-items-center rounded-full text-stone-700 transition hover:bg-orange-50 hover:text-orange-500" aria-label="Tìm kiếm"><Search size={20} /></button>
-            <button onClick={() => navigate('/table/demo/cart')} className="relative grid h-10 w-10 place-items-center rounded-full text-stone-700 transition hover:bg-orange-50 hover:text-orange-500" aria-label="Giỏ hàng"><ShoppingBag size={20} /><span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">{cartItemCount}</span></button>
+            <button onClick={() => navigate('/cart')} className="relative grid h-10 w-10 place-items-center rounded-full text-stone-700 transition hover:bg-orange-50 hover:text-orange-500" aria-label="Giỏ hàng"><ShoppingBag size={20} /><span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">{cartItemCount}</span></button>
             {user ? (
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
