@@ -30,6 +30,7 @@ import {
   X,
   RotateCcw,
   Sparkles,
+  Utensils,
 } from 'lucide-react-native';
 import { theme } from '@/theme';
 import { ScreenWrapper } from '@/components/common/ScreenWrapper';
@@ -163,6 +164,7 @@ export const ScanCheckInScreen = () => {
             onPress: () => {
               handleResetScan();
               navigation.replace(ROUTES.STACKS.TABLE_DETAIL, {
+                tableId: targetTableId,
                 tableNumber: tableName,
               });
             },
@@ -516,6 +518,34 @@ export const ScanCheckInScreen = () => {
                     </View>
                   </View>
                 ) : null}
+                {/* Pre-ordered Dishes Section */}
+                {reservation.reservationItems &&
+                reservation.reservationItems.length > 0 ? (
+                  <View style={styles.preOrderBox}>
+                    <View style={styles.preOrderHeader}>
+                      <Utensils size={16} color={theme.colors.primary} />
+                      <Text style={styles.preOrderTitle}>
+                        Món khách gọi trước ({reservation.reservationItems.length} món):
+                      </Text>
+                    </View>
+                    <View style={styles.preOrderList}>
+                      {reservation.reservationItems.map((item) => (
+                        <View key={item.id} style={styles.preOrderItemRow}>
+                          <Text style={styles.preOrderItemName} numberOfLines={1}>
+                            • {item.menuItem?.name || 'Món ăn'}
+                          </Text>
+                          <Text style={styles.preOrderItemQty}>
+                            x{item.quantity}
+                          </Text>
+                          <Text style={styles.preOrderItemPrice}>
+                            ${(Number(item.unitPrice) * item.quantity).toFixed(2)}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+
 
                 {/* Table Assignment Section */}
                 <View style={styles.tableAssignSection}>
@@ -661,6 +691,52 @@ export const ScanCheckInScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  preOrderBox: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 16,
+  },
+  preOrderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  preOrderTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#9A3412',
+  },
+  preOrderList: {
+    gap: 6,
+  },
+  preOrderItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  preOrderItemName: {
+    flex: 1,
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  preOrderItemQty: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.primary,
+    marginHorizontal: 8,
+  },
+  preOrderItemPrice: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+
   container: {
     flex: 1,
     backgroundColor: '#0F172A',

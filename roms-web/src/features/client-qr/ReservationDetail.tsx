@@ -212,6 +212,42 @@ export default function ReservationDetail() {
                 </p>
               </div>
             )}
+            {/* DANH SÁCH MÓN ĂN ĐẶT TRƯỚC */}
+            {reservation.reservationItems && reservation.reservationItems.length > 0 ? (
+              <div className="pt-3 border-t border-stone-100 text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-stone-800 text-xs flex items-center gap-1.5">
+                    <Utensils size={14} className="text-orange-500" />
+                    {t('Món ăn đã gọi trước:', 'Pre-ordered Dishes:')}
+                  </span>
+                  <span className="text-[11px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
+                    {reservation.reservationItems.length} {t('món', 'items')}
+                  </span>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {reservation.reservationItems.map((item: any) => (
+                    <div key={item.id} className="flex items-center justify-between bg-stone-50 p-2.5 rounded-xl border border-stone-200 text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {item.menuItem?.imageUrl ? (
+                          <img src={item.menuItem.imageUrl} alt={item.menuItem.name} className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg bg-stone-200 flex items-center justify-center text-stone-500 font-bold flex-shrink-0">🍽️</div>
+                        )}
+                        <div className="truncate">
+                          <strong className="text-stone-900 block truncate">{item.menuItem?.name || 'Món ăn'}</strong>
+                          <span className="text-[11px] text-stone-500">
+                            ${Number(item.unitPrice).toFixed(2)} × {item.quantity}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="font-bold text-stone-900 text-xs flex-shrink-0">
+                        ${(Number(item.unitPrice) * item.quantity).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* NÚT THAO TÁC */}

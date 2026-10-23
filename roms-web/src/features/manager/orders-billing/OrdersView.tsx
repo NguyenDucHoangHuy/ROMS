@@ -68,6 +68,7 @@ export default function OrdersView() {
   // Modals state
   const [selectedOrderForBill, setSelectedOrderForBill] = useState<any | null>(null);
   const [selectedResForAssign, setSelectedResForAssign] = useState<any | null>(null);
+  const [selectedResForItems, setSelectedResForItems] = useState<any | null>(null);
   const [assignedTableId, setAssignedTableId] = useState<string>("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -1172,6 +1173,7 @@ export default function OrdersView() {
                         <th>{t("KHÁCH HÀNG", "GUEST")}</th>
                         <th>{t("NGÀY & GIỜ HẸN", "RESERVATION TIME")}</th>
                         <th>{t("SỐ KHÁCH", "PARTY SIZE")}</th>
+                        <th>{t("MÓN ĐẶT TRƯỚC", "PRE-ORDERED DISHES")}</th>
                         <th>{t("BÀN ĐÃ GÁN", "ASSIGNED TABLE")}</th>
                         <th>{t("TIỀN CỌC", "DEPOSIT")}</th>
                         <th>{t("TRẠNG THÁI", "STATUS")}</th>
@@ -1218,6 +1220,22 @@ export default function OrdersView() {
                               <span style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
                                 <Users size={14} color="#ea580c" /> {res.partySize} {t("người", "guests")}
                               </span>
+                            </td>
+
+                            <td>
+                              {res.reservationItems && res.reservationItems.length > 0 ? (
+                                <button
+                                  className="ob-btn ob-btn-secondary"
+                                  style={{ height: 28, fontSize: 11, padding: "0 8px", display: "inline-flex", alignItems: "center", gap: 4 }}
+                                  onClick={() => setSelectedResForItems(res)}
+                                  title={t("Xem chi tiết các món khách đặt", "View pre-ordered dishes")}
+                                >
+                                  <Utensils size={12} color="#ea580c" />
+                                  <b style={{ color: "#ea580c" }}>{res.reservationItems.length} {t("món", "dishes")}</b>
+                                </button>
+                              ) : (
+                                <span style={{ color: "#a8a29e", fontSize: 12 }}>{t("Không có", "None")}</span>
+                              )}
                             </td>
 
                             <td>
@@ -1658,6 +1676,21 @@ export default function OrdersView() {
                     {scannedReservation.specialRequest && (
                       <div style={{ gridColumn: "span 2", fontSize: 11.5, color: "#9a3412" }}>
                         📌 <i>{scannedReservation.specialRequest}</i>
+                      </div>
+                    )}
+                    {scannedReservation.reservationItems && scannedReservation.reservationItems.length > 0 && (
+                      <div style={{ gridColumn: "span 2", marginTop: 8, background: "#fef3c7", padding: "10px 12px", borderRadius: 8, border: "1px solid #fde68a" }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                          <Utensils size={14} /> {t("Món ăn khách đã gọi trước:", "Pre-ordered Dishes:")} ({scannedReservation.reservationItems.length} món)
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {scannedReservation.reservationItems.map((item: any) => (
+                            <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#78350f" }}>
+                              <span>• <b>{item.menuItem?.name || 'Món'}</b> × {item.quantity}</span>
+                              <b>${(Number(item.unitPrice) * item.quantity).toFixed(2)}</b>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>

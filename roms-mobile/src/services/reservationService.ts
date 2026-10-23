@@ -8,6 +8,22 @@ export interface TableItem {
   status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING';
 }
 
+export interface ReservationItemData {
+  id: string;
+  reservationId: string;
+  menuItemId: string;
+  quantity: number;
+  unitPrice: number;
+  notes?: string;
+  menuItem?: {
+    id: string;
+    name: string;
+    price: number;
+    imageUrl?: string;
+    description?: string;
+  };
+}
+
 export interface ReservationData {
   id: string;
   guestName: string;
@@ -21,6 +37,7 @@ export interface ReservationData {
   tableId?: string | null;
   table?: TableItem | null;
   createdAt: string;
+  reservationItems?: ReservationItemData[];
 }
 
 export const reservationService = {
@@ -54,4 +71,3 @@ export const reservationService = {
     return res.data?.data || res.data;
   },
 };
-
