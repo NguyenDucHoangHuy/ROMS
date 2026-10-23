@@ -111,6 +111,7 @@ export default function AppRoutes() {
         <Route path="/menu" element={<MenuPage />} />
         <Route path="/table/:tableId/menu" element={<MenuPage />} />
         <Route path="/table/:tableId/cart" element={<CartPage />} />
+        <Route path="/cart" element={<CartPage />} />
         <Route path="/table/:tableId/order-status" element={<OrderStatusPage />} />
         <Route path="/reservation" element={<ReservationPage />} />
         <Route path="/reservation/:reservationId" element={<ReservationDetail />} />
