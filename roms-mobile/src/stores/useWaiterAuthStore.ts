@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User } from '@/types';
-import { api } from '@/services/api';
+import { api, setOnUnauthorizedCallback } from '@/services/api';
 
 interface WaiterAuthState {
   user: User | null;
@@ -71,3 +71,8 @@ export const useWaiterAuthStore = create<WaiterAuthState>()((set, get) => ({
     }
   },
 }));
+
+// Khi nhận lỗi 401 từ API, tự động đồng bộ logout trạng thái người dùng
+setOnUnauthorizedCallback(() => {
+  useWaiterAuthStore.getState().logout();
+});

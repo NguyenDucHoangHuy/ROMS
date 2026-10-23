@@ -21,6 +21,11 @@ export const api = axios.create({
   },
 });
 
+let onUnauthorizedCallback: (() => void) | null = null;
+export const setOnUnauthorizedCallback = (cb: () => void) => {
+  onUnauthorizedCallback = cb;
+};
+
 api.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('accessToken');
@@ -39,11 +44,8 @@ api.interceptors.response.use(
     if (error?.response?.status === 401) {
       await AsyncStorage.removeItem('accessToken');
       await AsyncStorage.removeItem('userData');
-      try {
-        const { useWaiterAuthStore } = require('@/stores/useWaiterAuthStore');
-        useWaiterAuthStore.getState().logout();
-      } catch (e) {
-        // ignore
+      if (onUnauthorizedCallback) {
+        onUnauthorizedCallback();
       }
     }
     return Promise.reject(error);
