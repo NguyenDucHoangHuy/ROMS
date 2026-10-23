@@ -159,7 +159,11 @@ export const TableMapScreen = () => {
     <ScreenWrapper style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
+        <TouchableOpacity
+          style={styles.headerLeft}
+          onPress={() => navigation.navigate(ROUTES.TABS.PROFILE)}
+          activeOpacity={0.8}
+        >
           <Image
             source={{
               uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
@@ -167,7 +171,7 @@ export const TableMapScreen = () => {
             style={styles.avatarImg}
           />
           <Text style={styles.brandTitle}>ROMS</Text>
-        </View>
+        </TouchableOpacity>
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.qrScanBtn}

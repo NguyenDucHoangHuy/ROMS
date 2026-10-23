@@ -14,25 +14,19 @@ interface WaiterAuthState {
   loadStoredAuth: () => Promise<void>;
 }
 
-export const useWaiterAuthStore = create<WaiterAuthState>()((set) => ({
+export const useWaiterAuthStore = create<WaiterAuthState>()((set, get) => ({
   user: null,
   token: null,
   isAuthenticated: false,
 
-  // Hàm login nhanh hỗ trợ test UI
+  // Đăng nhập nhanh tài khoản Waiter mẫu trong DB để lấy Token JWT thật
   login: async (role = 'WAITER') => {
-    const mockUser: User = {
-      id: 'waiter-001',
-      name: 'Nguyễn Văn Phục Vụ',
-      phone: '0905123456',
-      role: role as any,
-      isActive: true,
-    };
-    const mockToken = 'mock-jwt-access-token';
-
-    await AsyncStorage.setItem('accessToken', mockToken);
-    await AsyncStorage.setItem('userData', JSON.stringify(mockUser));
-    set({ user: mockUser, token: mockToken, isAuthenticated: true });
+    try {
+      await get().loginWithCredentials('0905333444', 'Admin@123');
+    } catch (err) {
+      console.warn('Lỗi đăng nhập tài khoản mẫu qua API:', err);
+      throw err;
+    }
   },
 
   // Đăng nhập thực tế với Backend
@@ -64,8 +58,13 @@ export const useWaiterAuthStore = create<WaiterAuthState>()((set) => ({
     try {
       const token = await AsyncStorage.getItem('accessToken');
       const userData = await AsyncStorage.getItem('userData');
-      if (token && userData) {
+      // Không chấp nhận token giả lập cũ mock-jwt-access-token
+      if (token && token !== 'mock-jwt-access-token' && userData) {
         set({ user: JSON.parse(userData), token, isAuthenticated: true });
+      } else {
+        await AsyncStorage.removeItem('accessToken');
+        await AsyncStorage.removeItem('userData');
+        set({ user: null, token: null, isAuthenticated: false });
       }
     } catch {
       set({ user: null, token: null, isAuthenticated: false });

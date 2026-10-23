@@ -51,3 +51,4 @@ export const tableService = {
     return res.data?.data || res.data;
   },
 };
+

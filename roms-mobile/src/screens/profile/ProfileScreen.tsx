@@ -72,12 +72,12 @@ export const ProfileScreen = () => {
         <View style={styles.profileSection}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>VA</Text>
+              <Text style={styles.avatarText}>{((user?.fullName || user?.name || 'WA').slice(0, 2)).toUpperCase()}</Text>
             </View>
             <View style={styles.onlineBadge} />
           </View>
-          <Text style={styles.userName}>{user?.name || 'Nguyễn Văn An'}</Text>
-          <Text style={styles.userRole}>ID: W-8924 | Senior Waiter</Text>
+          <Text style={styles.userName}>{user?.fullName || user?.name || 'Nhân viên phục vụ'}</Text>
+          <Text style={styles.userRole}>{user?.phone ? 'SĐT: ' + user.phone + ' • ' : ''}Vai trò: {user?.role || 'WAITER'}</Text>
         </View>
 
         {/* GPS Attendance Box */}

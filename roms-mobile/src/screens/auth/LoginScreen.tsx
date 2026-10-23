@@ -24,44 +24,35 @@ import { useWaiterAuthStore } from '@/stores/useWaiterAuthStore';
 import { ScreenWrapper } from '@/components/common/ScreenWrapper';
 
 export const LoginScreen = () => {
-  const [employeeId, setEmployeeId] = useState('');
-  const [pinCode, setPinCode] = useState('');
+  // Điền sẵn tài khoản Waiter mẫu trong Database để tiện đăng nhập ngay
+  const [employeeId, setEmployeeId] = useState('0905333444');
+  const [pinCode, setPinCode] = useState('Admin@123');
   const [showPin, setShowPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const login = useWaiterAuthStore((state) => state.login);
   const loginWithCredentials = useWaiterAuthStore(
     (state) => state.loginWithCredentials
   );
 
-  const handleLogin = async () => {
-    if (!employeeId.trim() || !pinCode.trim()) {
-      // Nếu chưa nhập thông tin, tự động dùng mock login tiện lợi
-      login('WAITER');
-      return;
-    }
+  const handleLogin = async (phoneToUse?: string, passToUse?: string) => {
+    const phone = (phoneToUse || employeeId || '0905333444').trim();
+    const pass = (passToUse || pinCode || 'Admin@123').trim();
 
     setIsLoading(true);
     try {
-      await loginWithCredentials(employeeId.trim(), pinCode.trim());
+      await loginWithCredentials(phone, pass);
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||
-        'Đăng nhập không thành công. Vui lòng kiểm tra lại Số điện thoại và Mật khẩu.';
-      Alert.alert('Lỗi đăng nhập', msg, [
-        {
-          text: 'Dùng chế độ Test',
-          onPress: () => login('WAITER'),
-        },
-        { text: 'Thử lại', style: 'cancel' },
-      ]);
+        'Đăng nhập không thành công. Vui lòng kiểm tra xem Backend đã khởi động chưa và SĐT/Mật khẩu chính xác.';
+      Alert.alert('Lỗi đăng nhập', msg);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleQuickLogin = () => {
-    login('WAITER');
+    handleLogin('0905333444', 'Admin@123');
   };
 
   return (
@@ -82,11 +73,11 @@ export const LoginScreen = () => {
         {/* Login Card */}
         <View style={styles.card}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Số điện thoại / Mã nhân viên</Text>
+            <Text style={styles.label}>Số điện thoại nhân viên</Text>
             <View style={styles.inputWrap}>
               <TextInput
                 style={[styles.input, { flex: 1 }]}
-                placeholder="VD: 0905123456"
+                placeholder="VD: 0905333444"
                 placeholderTextColor={theme.colors.textMuted}
                 value={employeeId}
                 onChangeText={setEmployeeId}
@@ -97,7 +88,7 @@ export const LoginScreen = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Mật khẩu / PIN</Text>
+            <Text style={styles.label}>Mật khẩu</Text>
             <View style={styles.inputWrap}>
               <Lock
                 size={16}
@@ -128,7 +119,7 @@ export const LoginScreen = () => {
           {/* Nút Đăng nhập chính */}
           <TouchableOpacity
             style={[styles.btnAuthenticate, isLoading && { opacity: 0.7 }]}
-            onPress={handleLogin}
+            onPress={() => handleLogin()}
             disabled={isLoading}
             activeOpacity={0.88}
           >
@@ -136,21 +127,22 @@ export const LoginScreen = () => {
               <ActivityIndicator color="#FFF" />
             ) : (
               <>
-                <Text style={styles.btnText}>Đăng nhập</Text>
+                <Text style={styles.btnText}>Đăng nhập vào ca</Text>
                 <ArrowRight size={18} color="#FFF" />
               </>
             )}
           </TouchableOpacity>
 
-          {/* Nút Đăng nhập nhanh Test Mode */}
+          {/* Nút Đăng nhập nhanh tài khoản mẫu */}
           <TouchableOpacity
             style={styles.quickLoginBtn}
             onPress={handleQuickLogin}
+            disabled={isLoading}
             activeOpacity={0.8}
           >
             <Zap size={14} color={theme.colors.primary} />
             <Text style={styles.quickLoginText}>
-              Đăng nhập nhanh (Test Mode)
+              Đăng nhập tài khoản mẫu (Mia Jenkins)
             </Text>
           </TouchableOpacity>
         </View>

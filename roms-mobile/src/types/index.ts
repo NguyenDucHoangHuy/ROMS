@@ -2,10 +2,11 @@ import type { UserRole } from '@/constants/roles'
 
 export interface User {
   id: string
-  name: string
+  name?: string
+  fullName?: string
   phone: string
   role: UserRole
-  isActive: boolean
+  isActive?: boolean
 }
 
 export type TableStatus = 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'CLEANING'

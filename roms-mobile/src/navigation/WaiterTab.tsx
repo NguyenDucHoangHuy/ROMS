@@ -1,7 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { Utensils, BookOpen, FileText, Bell } from 'lucide-react-native';
+import { Utensils, BookOpen, FileText, Bell, User } from 'lucide-react-native';
 import { theme } from '@/theme';
 import { ROUTES } from '@/constants/routes';
 
@@ -9,6 +9,7 @@ import { TableMapScreen } from '@/screens/tables/TableMapScreen';
 import { CreateOrderScreen } from '@/screens/order/CreateOrderScreen';
 import { ActiveOrdersScreen } from '@/screens/orders/ActiveOrdersScreen';
 import { NotificationsScreen } from '@/screens/notifications/NotificationsScreen';
+import { ProfileScreen } from '@/screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -47,6 +48,8 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
               );
             case ROUTES.TABS.NOTIFICATIONS:
               return <Bell size={20} color={color} />;
+            case ROUTES.TABS.PROFILE:
+              return <User size={20} color={color} />;
             default:
               return <Utensils size={20} color={color} />;
           }
@@ -108,6 +111,11 @@ export const WaiterTab = () => {
         component={NotificationsScreen}
         options={{ tabBarLabel: 'Alerts' }}
       />
+      <Tab.Screen
+        name={ROUTES.TABS.PROFILE}
+        component={ProfileScreen}
+        options={{ tabBarLabel: 'Profile' }}
+      />
     </Tab.Navigator>
   );
 };
@@ -119,7 +127,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     height: 72,
     backgroundColor: theme.colors.surface,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingBottom: 10,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
@@ -128,28 +136,28 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.md,
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 70,
+    minWidth: 62,
     gap: 3,
     ...theme.shadow.sm,
   },
   activeTabText: {
     color: theme.colors.textOnPrimary,
-    fontSize: theme.fontSize.xs,
+    fontSize: 11,
     fontWeight: theme.fontWeight.extrabold,
   },
   inactiveTabBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 60,
+    minWidth: 54,
     paddingVertical: 6,
     gap: 3,
   },
   inactiveTabText: {
     color: theme.colors.tabInactive,
-    fontSize: theme.fontSize.xs,
+    fontSize: 11,
     fontWeight: theme.fontWeight.bold,
   },
   iconBadgeWrap: {
