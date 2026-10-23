@@ -48,7 +48,8 @@
         {
           "cameraPermission": "Cho phép ROMS truy cập camera để quét mã QR check-in đặt bàn."
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "androidStatusBar": {
       "barStyle": "dark-content",
